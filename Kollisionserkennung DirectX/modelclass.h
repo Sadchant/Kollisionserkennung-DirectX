@@ -7,10 +7,9 @@
 #include <d3d11.h>
 #include <directxmath.h>
 #include <fstream>
+#include <iostream>
 
-///////////////////////
-// MY CLASS INCLUDES //
-///////////////////////
+#include "lightshaderclass.h"
 #include "textureclass.h"
 
 using namespace DirectX;
@@ -26,9 +25,9 @@ public:
 	// The functions here handle initializing and shutdown of the model's vertex and index buffers. The Render function puts the model
 	// geometry on the video card to prepare it for drawing by the color shader.
 	// The Initialize function will now take as input the character string file name of the model to be loaded.
-	bool Initialize(ID3D11Device*, char*, WCHAR*);
+	bool Initialize(ID3D11Device*, char*, HWND hwnd);
 	void Shutdown();
-	void Render(ID3D11DeviceContext*);
+	bool Render(ID3D11DeviceContext* deviceContext, XMMATRIX worldmatrix, XMMATRIX viewMatrix, XMMATRIX projectionMatrix, XMFLOAT3 lightDirection, XMFLOAT4 diffuseColor);
 
 	int GetIndexCount();
 
@@ -43,6 +42,7 @@ private:
 
 	ID3D11Buffer *m_vertexBuffer, *m_indexBuffer;
 	int m_vertexCount, m_indexCount;
+	LightShaderClass* m_LightShader;
 	TextureClass* m_Texture;
 	
 	// The next change is the addition of a new structure to represent the model format.It is called ModelType.It contains position, texture, and normal vectors the same as our file format does.

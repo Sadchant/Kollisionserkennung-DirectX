@@ -313,7 +313,7 @@ void ColorShaderClass::OutputShaderErrorMessage(ID3D10Blob* errorMessage, HWND h
 }
 
 // The SetShaderVariables function exists to make setting the global variables in the shader easier. 
-// The matrices used in this function are created inside the GraphicsClass, after which this function
+// The matrices used in this function are created inside the Scene, after which this function
 // is called to send them from there into the vertex shader during the Render function call.
 
 bool ColorShaderClass::SetShaderParameters(ID3D11DeviceContext* deviceContext, XMMATRIX& worldMatrix, XMMATRIX& viewMatrix,

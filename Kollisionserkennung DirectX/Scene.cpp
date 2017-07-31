@@ -1,28 +1,27 @@
-#include "graphicsclass.h"
+#include "Scene.h"
 
 
-GraphicsClass::GraphicsClass()
+Scene::Scene()
 {
 	m_Direct3D = 0;
 	m_Camera = 0;
-	m_Model = 0;
 	//m_ColorShader = 0;
 	//m_TextureShader = 0;
-	m_LightShader = 0;
+	//m_LightShader = 0;
 	m_Light = 0;
 }
 
-GraphicsClass::GraphicsClass(const GraphicsClass& other)
+Scene::Scene(const Scene& other)
 {
 }
 
 
-GraphicsClass::~GraphicsClass()
+Scene::~Scene()
 {
 }
 
 
-bool GraphicsClass::Initialize(int screenWidth, int screenHeight, HWND hwnd)
+bool Scene::Initialize(int screenWidth, int screenHeight, HWND hwnd)
 {
 	bool result;
 
@@ -52,15 +51,9 @@ bool GraphicsClass::Initialize(int screenWidth, int screenHeight, HWND hwnd)
 	// Set the initial position of the camera.
 	m_Camera->SetPosition(0.0f, 0.0f, -5.0f);
 
-	// Create the model object.
-	m_Model = new ModelClass;
-	if (!m_Model)
-	{
-		return false;
-	}
 
 	// Initialize the model object.
-	result = m_Model->Initialize(m_Direct3D->GetDevice(), "../Kollisionserkennung DirectX/data/dreiecke.txt", L"../Kollisionserkennung DirectX/data/seafloor.dds");
+	result = LoadObjects(m_Direct3D->GetDevice(), hwnd);
 
 	if (!result)
 	{
@@ -101,19 +94,19 @@ bool GraphicsClass::Initialize(int screenWidth, int screenHeight, HWND hwnd)
 
 	// The new light shader object is created and initialized here.
 	// Create the light shader object.
-	m_LightShader = new LightShaderClass;
-	if (!m_LightShader)
-	{
-		return false;
-	}
+	//m_LightShader = new LightShaderClass;
+	//if (!m_LightShader)
+	//{
+	//	return false;
+	//}
 
-	// Initialize the light shader object.
-	result = m_LightShader->Initialize(m_Direct3D->GetDevice(), hwnd);
-	if (!result)
-	{
-		MessageBox(hwnd, L"Could not initialize the light shader object.", L"Error", MB_OK);
-		return false;
-	}
+	//// Initialize the light shader object.
+	//result = m_LightShader->Initialize(m_Direct3D->GetDevice(), hwnd);
+	//if (!result)
+	//{
+	//	MessageBox(hwnd, L"Could not initialize the light shader object.", L"Error", MB_OK);
+	//	return false;
+	//}
 	// The new light object is created here.
 		// Create the light object.
 	m_Light = new LightClass;
@@ -126,13 +119,11 @@ bool GraphicsClass::Initialize(int screenWidth, int screenHeight, HWND hwnd)
 	m_Light->SetDiffuseColor(1.0f, 1.0f, 1.0f, 1.0f);
 	m_Light->SetDirection(0.0f, 1.0f, 1.0f);
 
-
-
 	return true;
 }
 
 
-void GraphicsClass::Shutdown()
+void Scene::Shutdown()
 {
 	//// Release the color shader object.
 	//if (m_ColorShader)
@@ -158,21 +149,21 @@ void GraphicsClass::Shutdown()
 	}
 
 	// Release the light shader object.
-	if (m_LightShader)
+	/*if (m_LightShader)
 	{
 		m_LightShader->Shutdown();
 		delete m_LightShader;
 		m_LightShader = 0;
-	}
+	}*/
 
 
-	// Release the model object.
-	if (m_Model)
+	for (int i = 0; i < m_Objects.size(); i++)
 	{
-		m_Model->Shutdown();
-		delete m_Model;
-		m_Model = 0;
+		ModelClass* aktModelClass = m_Objects[i];
+		aktModelClass->Shutdown();
+		delete aktModelClass;
 	}
+	m_Objects.clear();
 
 	// Release the camera object.
 	if (m_Camera)
@@ -190,7 +181,7 @@ void GraphicsClass::Shutdown()
 }
 
 
-bool GraphicsClass::Frame()
+bool Scene::Frame()
 {
 	bool result;
 
@@ -215,7 +206,7 @@ bool GraphicsClass::Frame()
 }
 
 
-bool GraphicsClass::Render(float rotation)
+bool Scene::Render(float rotation)
 {
 	XMMATRIX worldMatrix, viewMatrix, projectionMatrix;
 	bool result;
@@ -237,7 +228,14 @@ bool GraphicsClass::Render(float rotation)
 	worldMatrix = XMMatrixRotationY(rotation);
 
 	// Put the model vertex and index buffers on the graphics pipeline to prepare them for drawing.
-	m_Model->Render(m_Direct3D->GetDeviceContext());
+	for (ModelClass* object : m_Objects)
+	{
+		result = object->Render(m_Direct3D->GetDeviceContext(), worldMatrix, viewMatrix, projectionMatrix, m_Light->GetDirection(), m_Light->GetDiffuseColor());
+		if (!result)
+		{
+			return false;
+		}
+	}
 
 	// Render the model using the color shader.
 	//result = m_ColorShader->Render(m_Direct3D->GetDeviceContext(), m_Model->GetIndexCount(), worldMatrix, viewMatrix, projectionMatrix);
@@ -246,14 +244,26 @@ bool GraphicsClass::Render(float rotation)
 	// result = m_TextureShader->Render(m_Direct3D->GetDeviceContext(), m_Model->GetIndexCount(), worldMatrix, viewMatrix, projectionMatrix, m_Model->GetTexture());
 
 	// Render the model using the light shader.
-	result = m_LightShader->Render(m_Direct3D->GetDeviceContext(), m_Model->GetIndexCount(), worldMatrix, viewMatrix, projectionMatrix, m_Model->GetTexture(), 
-									m_Light->GetDirection(), m_Light->GetDiffuseColor());
-	if (!result)
-	{
-		return false;
-	}
+	/*result = m_LightShader->Render(m_Direct3D->GetDeviceContext(), m_Model->GetIndexCount(), worldMatrix, viewMatrix, projectionMatrix, 
+									m_Light->GetDirection(), m_Light->GetDiffuseColor());*/
+	
 
 	// Present the rendered scene to the screen.
 	m_Direct3D->EndScene();
+	return true;
+}
+
+bool Scene::LoadObjects(ID3D11Device *device, HWND hwnd)
+{
+	bool result;
+	ModelClass *firstModel = new ModelClass();
+	result = firstModel->Initialize(device, "../Kollisionserkennung DirectX/data/dreiecke.txt", hwnd);
+	if (!result)
+	{
+		MessageBox(hwnd, L"Could not initialize the first object.", L"Error", MB_OK);
+		return false;
+	}
+	m_Objects.push_back(firstModel);
+
 	return true;
 }

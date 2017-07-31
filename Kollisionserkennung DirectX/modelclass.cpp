@@ -7,10 +7,12 @@ ModelClass::ModelClass()
 	m_indexBuffer = 0;
 	m_Texture = 0;
 	m_model = 0;
+	m_LightShader = 0;
 }
 
 ModelClass::ModelClass(const ModelClass& other)
 {
+	cout << "DONT COPY ME!!!" << endl;
 }
 
 
@@ -18,9 +20,8 @@ ModelClass::~ModelClass()
 {
 }
 
-
 // The Initialize function will call the initialization functions for the vertex and index buffers.
-bool ModelClass::Initialize(ID3D11Device* device, char* modelFilename, WCHAR* textureFilename)
+bool ModelClass::Initialize(ID3D11Device* device, char* modelFilename, HWND hwnd)
 {
 	bool result;
 
@@ -38,10 +39,17 @@ bool ModelClass::Initialize(ID3D11Device* device, char* modelFilename, WCHAR* te
 		return false;
 	}
 
-	// Load the texture for this model.
-	result = LoadTexture(device, textureFilename);
+	m_LightShader = new LightShaderClass;
+	if (!m_LightShader)
+	{
+		return false;
+	}
+
+	// Initialize the light shader object.
+	result = m_LightShader->Initialize(device, hwnd);
 	if (!result)
 	{
+		MessageBox(hwnd, L"Could not initialize the light shader object.", L"Error", MB_OK);
 		return false;
 	}
 
@@ -51,6 +59,13 @@ bool ModelClass::Initialize(ID3D11Device* device, char* modelFilename, WCHAR* te
 // The Shutdown function will call the shutdown functions for the vertex and index buffers.
 void ModelClass::Shutdown()
 {
+	if (m_LightShader)
+	{
+		m_LightShader->Shutdown();
+		delete m_LightShader;
+		m_LightShader = 0;
+	}
+
 	// Release the model texture.
 	ReleaseTexture();
 
@@ -62,13 +77,18 @@ void ModelClass::Shutdown()
 	return;
 }
 
-// Render is called from the GraphicsClass::Render function.This function calls RenderBuffers to put the vertex and index buffers 
+// Render is called from the Scene::Render function.This function calls RenderBuffers to put the vertex and index buffers 
 // on the graphics pipeline so the color shader will be able to render them.
-void ModelClass::Render(ID3D11DeviceContext* deviceContext)
+bool ModelClass::Render(ID3D11DeviceContext* deviceContext, XMMATRIX worldMatrix, XMMATRIX viewMatrix, XMMATRIX projectionMatrix, XMFLOAT3 lightDirection, XMFLOAT4 diffuseColor)
 {
+	bool result;
 	// Put the vertex and index buffers on the graphics pipeline to prepare them for drawing.
 	RenderBuffers(deviceContext);
-	return;
+
+	result = m_LightShader->Render(deviceContext, m_indexCount, worldMatrix, viewMatrix, projectionMatrix,
+		lightDirection, diffuseColor);
+
+	return result;
 }
 
 

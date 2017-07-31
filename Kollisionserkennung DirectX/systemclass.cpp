@@ -3,7 +3,7 @@
 SystemClass::SystemClass()
 {
 	m_Input = NULL;
-	m_Graphics = NULL;
+	m_Scene = NULL;
 }
 
 SystemClass::SystemClass(const SystemClass& other)
@@ -38,14 +38,14 @@ bool SystemClass::Initialize()
 	m_Input->Initialize();
 
 	// Create the graphics object.  This object will handle rendering all the graphics for this application.
-	m_Graphics = new GraphicsClass;
-	if (!m_Graphics)
+	m_Scene = new Scene;
+	if (!m_Scene)
 	{
 		return false;
 	}
 
 	// Initialize the graphics object.
-	result = m_Graphics->Initialize(screenWidth, screenHeight, m_hwnd);
+	result = m_Scene->Initialize(screenWidth, screenHeight, m_hwnd);
 	if (!result)
 	{
 		return false;
@@ -57,11 +57,11 @@ bool SystemClass::Initialize()
 void SystemClass::Shutdown()
 {
 	// Release the graphics object.
-	if (m_Graphics)
+	if (m_Scene)
 	{
-		m_Graphics->Shutdown();
-		delete m_Graphics;
-		m_Graphics = 0;
+		m_Scene->Shutdown();
+		delete m_Scene;
+		m_Scene = 0;
 	}
 
 	// Release the input object.
@@ -130,7 +130,7 @@ bool SystemClass::Frame()
 	}
 
 	// Do the frame processing for the graphics object.
-	result = m_Graphics->Frame();
+	result = m_Scene->Frame();
 	if (!result)
 	{
 		return false;

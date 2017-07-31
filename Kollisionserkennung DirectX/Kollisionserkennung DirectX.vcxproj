@@ -21,9 +21,10 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="cameraclass.cpp" />
+    <ClCompile Include="CollisionDetectionManager.cpp" />
     <ClCompile Include="Colorshaderclass.cpp" />
     <ClCompile Include="d3dclass.cpp" />
-    <ClCompile Include="graphicsclass.cpp" />
+    <ClCompile Include="Scene.cpp" />
     <ClCompile Include="inputclass.cpp" />
     <ClCompile Include="LightClass.cpp" />
     <ClCompile Include="Lightshaderclass.cpp" />
@@ -35,9 +36,10 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="cameraclass.h" />
+    <ClInclude Include="CollisionDetectionManager.h" />
     <ClInclude Include="Colorshaderclass.h" />
     <ClInclude Include="d3dclass.h" />
-    <ClInclude Include="graphicsclass.h" />
+    <ClInclude Include="Scene.h" />
     <ClInclude Include="inputclass.h" />
     <ClInclude Include="LightClass.h" />
     <ClInclude Include="Lightshaderclass.h" />
