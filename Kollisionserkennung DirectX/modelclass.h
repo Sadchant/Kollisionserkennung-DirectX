@@ -15,6 +15,14 @@
 using namespace DirectX;
 using namespace std;
 
+// The next change is the addition of a new structure to represent the model format.It is called ModelType.It contains position, texture, and normal vectors the same as our file format does.
+struct VertexAndVertexDataType
+{
+	float x, y, z;
+	float tu, tv;
+	float nx, ny, nz;
+};
+
 class ModelClass
 {
 public:
@@ -30,9 +38,11 @@ public:
 	bool Render(ID3D11DeviceContext* deviceContext, XMMATRIX worldmatrix, XMMATRIX viewMatrix, XMMATRIX projectionMatrix, XMFLOAT3 lightDirection, XMFLOAT4 diffuseColor);
 
 	int GetIndexCount();
+	VertexAndVertexDataType* GetModelData() { return m_model; }
 
 	ID3D11ShaderResourceView* GetTexture();
 
+	
 
 
 private:
@@ -45,16 +55,9 @@ private:
 	LightShaderClass* m_LightShader;
 	TextureClass* m_Texture;
 	
-	// The next change is the addition of a new structure to represent the model format.It is called ModelType.It contains position, texture, and normal vectors the same as our file format does.
-	struct ModelType
-	{
-		float x, y, z;
-		float tu, tv;
-		float nx, ny, nz;
-	};
 	// The final change is a new private variable called m_model which is going to be an array of the new private structure ModelType. 
 	// This variable will be used to read in and hold the model data before it is placed in the vertex buffer.
-	ModelType* m_model;
+	VertexAndVertexDataType *m_model;
 
 	bool LoadTexture(ID3D11Device*, WCHAR*);
 	void ReleaseTexture();

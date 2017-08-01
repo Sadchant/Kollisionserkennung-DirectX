@@ -9,6 +9,7 @@ Scene::Scene()
 	//m_TextureShader = 0;
 	//m_LightShader = 0;
 	m_Light = 0;
+	m_CollisionDetectionManager = 0;
 }
 
 Scene::Scene(const Scene& other)
@@ -119,6 +120,8 @@ bool Scene::Initialize(int screenWidth, int screenHeight, HWND hwnd)
 	m_Light->SetDiffuseColor(1.0f, 1.0f, 1.0f, 1.0f);
 	m_Light->SetDirection(0.0f, 1.0f, 1.0f);
 
+	m_CollisionDetectionManager = new CollisionDetectionManager();
+
 	return true;
 }
 
@@ -176,6 +179,12 @@ void Scene::Shutdown()
 		m_Direct3D->Shutdown();
 		delete m_Direct3D;
 		m_Direct3D = 0;
+	}
+	if (m_CollisionDetectionManager) 
+	{
+		m_CollisionDetectionManager->Shutdown();
+		delete m_CollisionDetectionManager;
+		m_CollisionDetectionManager = 0;
 	}
 	return;
 }
@@ -250,6 +259,9 @@ bool Scene::Render(float rotation)
 
 	// Present the rendered scene to the screen.
 	m_Direct3D->EndScene();
+
+	m_CollisionDetectionManager->CreateTriangleArray(&m_Objects);
+
 	return true;
 }
 

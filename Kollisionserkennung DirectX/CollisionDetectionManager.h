@@ -10,13 +10,14 @@ public:
 	~CollisionDetectionManager();
 	void CreateTriangleArray(vector<ModelClass*>* objects);
 	void ReleaseArrays();
+	void Shutdown();
 
 private:
-	struct Triangle
+	struct Vertex
 	{
 		float x, y, z;
 	};
 
-	Triangle* m_SceneTriangles;
+	Vertex* m_SceneTriangles;
 };
 

@@ -10,6 +10,7 @@
 
 #include "lightshaderclass.h"
 #include "lightclass.h"
+#include "CollisionDetectionManager.h"
 
 using namespace std;
 
@@ -42,6 +43,8 @@ private:
 	//TextureShaderClass* m_TextureShader;
 	// LightShaderClass* m_LightShader;
 	LightClass* m_Light;
+
+	CollisionDetectionManager* m_CollisionDetectionManager;
 
 };
 
