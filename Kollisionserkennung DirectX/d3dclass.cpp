@@ -31,7 +31,7 @@ bool D3DClass::Initialize(int screenWidth, int screenHeight, bool vsync, HWND hw
 	HRESULT result; // Wird von diversen Windows-Funktionen zurückgegeben, beschreibt Fehler/Warnung
 	IDXGIFactory* factory; // Factory, die DXGI-Objekte erzeugen kann, die sich um Vollbild-Umschaltungen kümmern
 	IDXGIAdapter* adapter; // repräsentiert ein "Display sub-system", also eigentlich eingebaute Grafikkarten
-	IDXGIOutput* adapterOutput; // An IDXGIOutput interface represents an adapter output (such as a monitor)
+	//IDXGIOutput* adapterOutput; // An IDXGIOutput interface represents an adapter output (such as a monitor)
 	unsigned int numModes, i, numerator, denominator;
 	size_t stringLength; // kein uint, damit es für x64 compiliert
 	DXGI_MODE_DESC* displayModeList; // Describes a display mode, Struktur mit Höhe, Breite, Widerholrate, "Scaling"(wtf :P)
@@ -67,43 +67,71 @@ bool D3DClass::Initialize(int screenWidth, int screenHeight, bool vsync, HWND hw
 
 	// Use the factory to create an adapter for the primary graphics interface (video card).
 	// befüllt Paramter2 (ein Zeiger auf einen Zeiger auf IDXGIAdapter) mit Zeiger auf Zeiger auf ein Adapter-Interface (?)
-	result = factory->EnumAdapters(0, &adapter);
+	/*result = factory->EnumAdapters(2, &adapter);
 	if (FAILED(result))
 	{
 		return false;
+	}*/
+
+
+	UINT j = 0;
+	vector <IDXGIAdapter*> vAdapters;
+	while (factory->EnumAdapters(j, &adapter) != DXGI_ERROR_NOT_FOUND)
+	{
+		vAdapters.push_back(adapter);
+		++j;
 	}
+	
+	// j - 2 sollte auf einem PC = 0 ergeben, auf einem Laptop = 1, somit dedizierte GPU
+	// j - 1 ergibt den 
+	adapter = vAdapters[j-2];
+
+
+	/*IDXGIOutput ** pOutput = new IDXGIOutput*[j];
+	vector<IDXGIOutput*> vOutputs;
+	for (j = 0; j < vAdapters.size(); j++)
+	{
+		UINT k = 0;
+		while (vAdapters[j]->EnumOutputs(k, &*pOutput) != DXGI_ERROR_NOT_FOUND)
+		{
+			vOutputs.push_back(pOutput[k]);
+			++k;
+		}
+	}
+	IDXGIOutput *firstOutput = vOutputs[0];*/
+
 
 	// Enumerate the primary adapter output (monitor).
 	// befüllt adapterOutput mit dem Output-Ziel der Grafikkarte
-	result = adapter->EnumOutputs(0, &adapterOutput);
+	/*result = adapter->EnumOutputs(0, &adapterOutput);
 	if (FAILED(result))
 	{
 		return false;
-	}
+	}*/
 
 	// Get the number of modes that fit the DXGI_FORMAT_R8G8B8A8_UNORM display format for the adapter output (monitor).
 	// Starting with Direct3D 11.1, we recommend not to use GetDisplayModeList anymore to retrieve the matching display mode. 
 	// Instead, use IDXGIOutput1::GetDisplayModeList1, which supports stereo display mode.
 	// befüllt numModes mit der Anzahl der verfügbaren DisplayModi
-	result = adapterOutput->GetDisplayModeList(DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_ENUM_MODES_INTERLACED, &numModes, NULL);
+	/*result = adapterOutput->GetDisplayModeList(DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_ENUM_MODES_INTERLACED, &numModes, NULL);
 	if (FAILED(result))
 	{
 		return false;
-	}
+	}*/
 
 	// Create a list to hold all the possible display modes for this monitor/video card combination.
-	displayModeList = new DXGI_MODE_DESC[numModes];
+	/*displayModeList = new DXGI_MODE_DESC[numModes];
 	if (!displayModeList)
 	{
 		return false;
-	}
+	}*/
 
 	// Now fill the display mode list structures.
-	result = adapterOutput->GetDisplayModeList(DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_ENUM_MODES_INTERLACED, &numModes, displayModeList);
+	/*result = adapterOutput->GetDisplayModeList(DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_ENUM_MODES_INTERLACED, &numModes, displayModeList);
 	if (FAILED(result))
 	{
 		return false;
-	}
+	}*/
 
 	// Now go through all the display modes and find the one that matches the screen width and height.
 	// (die Display Modes haben nämlich alle möglichen Auflösungen
@@ -143,16 +171,14 @@ bool D3DClass::Initialize(int screenWidth, int screenHeight, bool vsync, HWND hw
 	}
 
 	// Release the display mode list.
-	delete[] displayModeList;
-	displayModeList = 0;
+	/*delete[] displayModeList;
+	displayModeList = 0;*/
 
 	// Release the adapter output.
-	adapterOutput->Release();
-	adapterOutput = 0;
+	//adapterOutput->Release();
+	//adapterOutput = 0;
 
-	// Release the adapter.
-	adapter->Release();
-	adapter = 0;
+	
 
 	// Release the factory.
 	factory->Release();
@@ -239,13 +265,22 @@ bool D3DClass::Initialize(int screenWidth, int screenHeight, bool vsync, HWND hw
 	// Create the swap chain, Direct3D device, and Direct3D device context.
 	// Now that the swap chain description and feature level have been filled out we can create the swap chain, the Direct3D device, and the Direct3D device context. 
 	// The Direct3D device and Direct3D device context are very important, they are the interface to all of the Direct3D functions. We will use the device and device
-	// context for almost everything from this point forward. 
-	result = D3D11CreateDeviceAndSwapChain(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL, 0, &featureLevel, 1,
+	// context for almost everything from this point forward.
+
+	// D3D_DRIVER_TYPE_UNKNOWN benutzen, wenn man einen spezifischen adapter übergibt!
+	result = D3D11CreateDeviceAndSwapChain(adapter, D3D_DRIVER_TYPE_UNKNOWN, NULL, 0, &featureLevel, 1,
 		D3D11_SDK_VERSION, &swapChainDesc, &m_swapChain, &m_device, NULL, &m_deviceContext);
 	if (FAILED(result))
 	{
 		return false;
 	}
+
+	// Adapter-Vector wieder freigeben
+	for (IDXGIAdapter* curAdapater : vAdapters) 
+	{
+		curAdapater->Release();
+	}
+	vAdapters.clear();
 
 	// checken ob alles gefunzt hat
 	// Get the pointer to the back buffer.
