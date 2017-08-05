@@ -121,6 +121,7 @@ bool Scene::Initialize(int screenWidth, int screenHeight, HWND hwnd)
 	m_Light->SetDirection(0.0f, 1.0f, 1.0f);
 
 	m_CollisionDetectionManager = new CollisionDetectionManager();
+	m_CollisionDetectionManager->Initialize(m_Direct3D->GetDevice(), m_Direct3D->GetDeviceContext(), hwnd);
 
 	return true;
 }
@@ -260,7 +261,7 @@ bool Scene::Render(float rotation)
 	// Present the rendered scene to the screen.
 	m_Direct3D->EndScene();
 
-	m_CollisionDetectionManager->CreateTriangleArray(&m_Objects);
+	m_CollisionDetectionManager->Frame(&m_Objects);
 
 	return true;
 }

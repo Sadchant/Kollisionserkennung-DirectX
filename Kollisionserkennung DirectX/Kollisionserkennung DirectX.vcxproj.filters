@@ -95,6 +95,9 @@
     <ClInclude Include="CollisionDetectionManager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Util.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
@@ -104,6 +107,7 @@
     <None Include="VertexShader.hlsl" />
     <None Include="LightPixelShader.hlsl" />
     <None Include="LightVertexShader.hlsl" />
+    <None Include="1_BoundingBox_ComputeShader.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Kollisionserkennung DirectX.rc">
