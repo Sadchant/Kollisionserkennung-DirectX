@@ -30,6 +30,7 @@ void main( uint3 DTid : SV_DispatchThreadID )
 
 	if (DTid.x > numStructs) return;
 
-	BoundingBox bb = { {0,0,0},{numStructs, numStructs, numStructs} };
+	BoundingBox bb = { {1,2,3},{numStructs, numStructs, numStructs} };
 	boundingBoxBuffer[DTid.x] = bb;
+	
 }

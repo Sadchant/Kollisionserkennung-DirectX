@@ -18,8 +18,10 @@ public:
 
 	bool CreateComputeShader(HWND hwnd, WCHAR * csFilename);
 
-	ID3D11Buffer * CreateStructuredBuffer(UINT count, UINT structsize, bool CPUWritable, bool GPUWritable, D3D11_SUBRESOURCE_DATA * pData);
+	ID3D11Buffer * CreateStructuredBuffer(UINT count, UINT structsize, UINT bindFlags, D3D11_USAGE usage, UINT CPUAccessFlags, D3D11_SUBRESOURCE_DATA *pData);
 	ID3D11UnorderedAccessView * CreateBufferUnorderedAccessView(ID3D11Resource * pResource, int elementCount);
+
+	ID3D11ShaderResourceView * CreateBufferShaderResourceView(ID3D11Resource * pResource, int elementCount);
 
 	void RunComputeShader(ID3D11ComputeShader * computeShader, int uavCount, ID3D11UnorderedAccessView **unorderedAccessViews, int xThreadCount, int yThreadCount);
 
@@ -58,9 +60,10 @@ private:
 	ID3D11Buffer* m_vertexBuffer;
 	ID3D11Buffer* m_triangleBuffer;
 	ID3D11Buffer* m_boundingBoxBuffer;
+	ID3D11Buffer* m_ResultBuffer;
 
-	ID3D11UnorderedAccessView* m_VertexUnorderedAccessView;
-	ID3D11UnorderedAccessView* m_TriangleUnorderedAccessView;
+	ID3D11ShaderResourceView* m_VertexShaderResourceView;
+	ID3D11ShaderResourceView* m_TriangleShaderResourceView;
 	ID3D11UnorderedAccessView* m_BoundingBoxUnorderedAccessView;
 
 };

@@ -84,7 +84,10 @@ bool D3DClass::Initialize(int screenWidth, int screenHeight, bool vsync, HWND hw
 	
 	// j - 2 sollte auf einem PC = 0 ergeben, auf einem Laptop = 1, somit dedizierte GPU
 	// j - 1 ergibt den 
-	adapter = vAdapters[j-2];
+	if (j > 1)
+		adapter = vAdapters[j - 2];
+	else
+		adapter = vAdapters[0];
 
 
 	/*IDXGIOutput ** pOutput = new IDXGIOutput*[j];
@@ -260,7 +263,7 @@ bool D3DClass::Initialize(int screenWidth, int screenHeight, bool vsync, HWND hw
 	swapChainDesc.Flags = 0;
 
 	// Set the feature level to DirectX 11.
-	featureLevel = D3D_FEATURE_LEVEL_11_0;
+	featureLevel = D3D_FEATURE_LEVEL_11_1;
 
 	// Create the swap chain, Direct3D device, and Direct3D device context.
 	// Now that the swap chain description and feature level have been filled out we can create the swap chain, the Direct3D device, and the Direct3D device context. 
@@ -268,7 +271,7 @@ bool D3DClass::Initialize(int screenWidth, int screenHeight, bool vsync, HWND hw
 	// context for almost everything from this point forward.
 
 	// D3D_DRIVER_TYPE_UNKNOWN benutzen, wenn man einen spezifischen adapter übergibt!
-	result = D3D11CreateDeviceAndSwapChain(adapter, D3D_DRIVER_TYPE_UNKNOWN, NULL, 0, &featureLevel, 1,
+	result = D3D11CreateDeviceAndSwapChain(adapter, D3D_DRIVER_TYPE_UNKNOWN, NULL, D3D11_CREATE_DEVICE_DEBUG, &featureLevel, 1,
 		D3D11_SDK_VERSION, &swapChainDesc, &m_swapChain, &m_device, NULL, &m_deviceContext);
 	if (FAILED(result))
 	{

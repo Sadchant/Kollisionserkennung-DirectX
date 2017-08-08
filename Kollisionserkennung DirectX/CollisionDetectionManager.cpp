@@ -15,9 +15,11 @@ CollisionDetectionManager::CollisionDetectionManager()
 	m_triangleBuffer = 0;
 	m_boundingBoxBuffer = 0;
 
-	m_VertexUnorderedAccessView = 0;
-	m_TriangleUnorderedAccessView = 0;
+	m_VertexShaderResourceView = 0;
+	m_TriangleShaderResourceView = 0;
 	m_BoundingBoxUnorderedAccessView = 0;
+	m_ResultBuffer = 0;
+
 }
 
 
@@ -44,9 +46,9 @@ void CollisionDetectionManager::CreateVertexAndTriangleArray(vector<ModelClass*>
 	m_TriangleCount = m_VertexCount / 3;  // es gibt 3 Punkte pro Dreieck, also /3
 
 	// vor dem neuen Speicher allokieren den alten freiegeben
-	DELETEARRAY(m_Vertices);
-	DELETEARRAY(m_Triangles);
-	DELETEARRAY(m_BoundingBoxes);
+	SAFEDELETEARRAY(m_Vertices);
+	SAFEDELETEARRAY(m_Triangles);
+	SAFEDELETEARRAY(m_BoundingBoxes);
 
 	m_Vertices = new Vertex[m_VertexCount];
 	m_Triangles = new Triangle[m_TriangleCount];
@@ -73,19 +75,20 @@ void CollisionDetectionManager::CreateVertexAndTriangleArray(vector<ModelClass*>
 
 void CollisionDetectionManager::Shutdown()
 {
-	RELEASEBUFFER(m_computeShader);
+	SAFERELEASE(m_computeShader);
 
-	DELETEARRAY(m_Vertices);
-	DELETEARRAY(m_Triangles);
-	DELETEARRAY(m_BoundingBoxes);
+	SAFEDELETEARRAY(m_Vertices);
+	SAFEDELETEARRAY(m_Triangles);
+	SAFEDELETEARRAY(m_BoundingBoxes);
 
-	RELEASEBUFFER(m_vertexBuffer);
-	RELEASEBUFFER(m_triangleBuffer);
-	RELEASEBUFFER(m_boundingBoxBuffer);
+	SAFERELEASE(m_vertexBuffer);
+	SAFERELEASE(m_triangleBuffer);
+	SAFERELEASE(m_boundingBoxBuffer);
 
-	RELEASEBUFFER(m_VertexUnorderedAccessView);
-	RELEASEBUFFER(m_TriangleUnorderedAccessView);
-	RELEASEBUFFER(m_BoundingBoxUnorderedAccessView);
+	SAFERELEASE(m_VertexShaderResourceView);
+	SAFERELEASE(m_TriangleShaderResourceView);
+	SAFERELEASE(m_BoundingBoxUnorderedAccessView);
+	SAFERELEASE(m_ResultBuffer);
 }
 
 bool CollisionDetectionManager::CreateComputeShader(HWND hwnd, WCHAR* csFilename)
@@ -151,36 +154,16 @@ bool CollisionDetectionManager::CreateComputeShader(HWND hwnd, WCHAR* csFilename
 	return true;
 }
 
-ID3D11Buffer* CollisionDetectionManager::CreateStructuredBuffer(UINT count, UINT structsize, bool CPUWritable, bool GPUWritable, D3D11_SUBRESOURCE_DATA *pData)
+ID3D11Buffer* CollisionDetectionManager::CreateStructuredBuffer(UINT count, UINT structsize, UINT bindFlags, D3D11_USAGE usage, UINT cpuAccessFlags, D3D11_SUBRESOURCE_DATA *pData)
 {
 	D3D11_BUFFER_DESC desc;
 	desc.ByteWidth = count * structsize;
 	desc.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
 	desc.StructureByteStride = structsize;
 
-	// Select the appropriate usage and CPU access flags based on the passed in flags
-	if (!CPUWritable && !GPUWritable)
-	{
-		desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
-		desc.Usage = D3D11_USAGE_IMMUTABLE;
-		desc.CPUAccessFlags = 0;
-	}
-	else if (CPUWritable && !GPUWritable)
-	{
-		desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
-		desc.Usage = D3D11_USAGE_DYNAMIC;
-		desc.CPUAccessFlags = D3D10_CPU_ACCESS_WRITE;
-	}
-	else if (!CPUWritable && GPUWritable)
-	{
-		desc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS;
-		desc.Usage = D3D11_USAGE_DEFAULT;
-		desc.CPUAccessFlags = 0;
-	}
-	else 
-	{
-		cout << "FEHLER: Es dürfen nicht CPU und GPU gleichzeitig in einen Buffer schreiben!" << endl;
-	}
+	desc.BindFlags = bindFlags;
+	desc.Usage = usage;
+	desc.CPUAccessFlags = cpuAccessFlags;
 
 	// Create the buffer with the specified configuration
 	ID3D11Buffer* pBuffer = 0;
@@ -199,7 +182,7 @@ ID3D11UnorderedAccessView* CollisionDetectionManager::CreateBufferUnorderedAcces
 
 	// als was soll die Resource angesehen werden? ALs Buffer oder 1-3-dimensionale Texturen und 1-3-dimensionale Texturen-Arrays
 	desc.ViewDimension = D3D11_UAV_DIMENSION_BUFFER; 
-	desc.Buffer.FirstElement;
+	desc.Buffer.FirstElement = 0;
 	desc.Buffer.NumElements = elementCount;
 
 	// desc.Buffer.Flags:
@@ -214,6 +197,26 @@ ID3D11UnorderedAccessView* CollisionDetectionManager::CreateBufferUnorderedAcces
 
 	ID3D11UnorderedAccessView* pView = 0;
 	HRESULT hr = device->CreateUnorderedAccessView(pResource, &desc, &pView);
+
+	return pView;
+}
+
+// Erzeugt unorderd Access View für normalen Structured Buffer
+ID3D11ShaderResourceView* CollisionDetectionManager::CreateBufferShaderResourceView(ID3D11Resource* pResource, int elementCount)
+{
+	D3D11_SHADER_RESOURCE_VIEW_DESC desc;
+
+	// For structured buffers, DXGI_FORMAT_ UNKNOWN must be used!
+	// For standard buffers, utilize the appropriate format
+	desc.Format = DXGI_FORMAT_UNKNOWN;
+
+	// als was soll die Resource angesehen werden? ALs Buffer oder 1-3-dimensionale Texturen und 1-3-dimensionale Texturen-Arrays
+	desc.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
+	desc.Buffer.FirstElement = 0;
+	desc.Buffer.NumElements = elementCount;
+
+	ID3D11ShaderResourceView* pView = 0;
+	HRESULT hr = device->CreateShaderResourceView(pResource, &desc, &pView);
 
 	return pView;
 }
@@ -273,30 +276,48 @@ void CollisionDetectionManager::Frame(vector<ModelClass*>* objects)
 	CreateVertexAndTriangleArray(objects);
 	D3D11_SUBRESOURCE_DATA vertexSubresourceData = D3D11_SUBRESOURCE_DATA { m_Vertices, 0, 0 };
 	D3D11_SUBRESOURCE_DATA triangleSubresourceData = D3D11_SUBRESOURCE_DATA{ m_Triangles, 0, 0 };
-	D3D11_SUBRESOURCE_DATA boundingBoxSubresourceData = D3D11_SUBRESOURCE_DATA{ m_BoundingBoxes, 0, 0 };	
 
 	// Buffer müssen released werden (falls etwas in ihnen ist), bevor sie neu created werden
-	RELEASEBUFFER(m_vertexBuffer);
-	RELEASEBUFFER(m_triangleBuffer);
-	RELEASEBUFFER(m_boundingBoxBuffer);
+	SAFERELEASE(m_vertexBuffer);
+	SAFERELEASE(m_triangleBuffer);
+	SAFERELEASE(m_boundingBoxBuffer);
+	SAFERELEASE(m_ResultBuffer);
 
-	m_vertexBuffer = CreateStructuredBuffer(m_VertexCount, sizeof(Vertex), false, false, &vertexSubresourceData);
-	m_triangleBuffer = CreateStructuredBuffer(m_TriangleCount, sizeof(Triangle), false, false, &triangleSubresourceData);
-	m_boundingBoxBuffer = CreateStructuredBuffer(m_TriangleCount, sizeof(BoundingBox), false, true, &boundingBoxSubresourceData);
+	m_vertexBuffer = CreateStructuredBuffer(m_VertexCount, sizeof(Vertex), D3D11_BIND_SHADER_RESOURCE, D3D11_USAGE_DEFAULT, 0, &vertexSubresourceData);
+	m_triangleBuffer = CreateStructuredBuffer(m_TriangleCount, sizeof(Triangle), D3D11_BIND_SHADER_RESOURCE, D3D11_USAGE_DEFAULT, 0, &vertexSubresourceData);
+	m_boundingBoxBuffer = CreateStructuredBuffer(m_TriangleCount, sizeof(BoundingBox), D3D11_BIND_UNORDERED_ACCESS, D3D11_USAGE_DEFAULT, 0, NULL); 
+	m_ResultBuffer = CreateStructuredBuffer(m_TriangleCount, sizeof(BoundingBox), 0, D3D11_USAGE_STAGING, D3D11_CPU_ACCESS_READ, NULL);
+	// Bounding Box wird ja im Shader befüllt, muss also nicht mit Daten initialisiert werden
 
-	// auch UnorderedAccessViews müssen released werden!
-	RELEASEBUFFER(m_VertexUnorderedAccessView);
-	RELEASEBUFFER(m_TriangleUnorderedAccessView);
-	RELEASEBUFFER(m_BoundingBoxUnorderedAccessView);
+	// auch ShaderResourceViews und UnorderedAccessViews müssen released werden!
+	SAFERELEASE(m_VertexShaderResourceView);
+	SAFERELEASE(m_TriangleShaderResourceView);
+	SAFERELEASE(m_BoundingBoxUnorderedAccessView);
 
-	m_VertexUnorderedAccessView = CreateBufferUnorderedAccessView(m_vertexBuffer, m_VertexCount);
-	m_TriangleUnorderedAccessView = CreateBufferUnorderedAccessView(m_triangleBuffer, m_TriangleCount);
+	m_VertexShaderResourceView = CreateBufferShaderResourceView(m_vertexBuffer, m_VertexCount);
+	m_TriangleShaderResourceView = CreateBufferShaderResourceView(m_triangleBuffer, m_TriangleCount);
 	m_BoundingBoxUnorderedAccessView = CreateBufferUnorderedAccessView(m_boundingBoxBuffer, m_TriangleCount);
+	
+	int xThreadGroups = (int)ceil(m_TriangleCount / 1024.0f);
 
-	ID3D11UnorderedAccessView* unorderedAccessViews[3] = { m_VertexUnorderedAccessView , m_TriangleUnorderedAccessView, m_BoundingBoxUnorderedAccessView };
+	deviceContext->CSSetShaderResources(0, 1, &m_VertexShaderResourceView);
+	deviceContext->CSSetShaderResources(0, 1, &m_TriangleShaderResourceView);
+	deviceContext->CSSetUnorderedAccessViews(0, 1, &m_BoundingBoxUnorderedAccessView, 0);
 
-	int xThreadGroups = (int)ceil(m_TriangleCount / 1024);
-	RunComputeShader(m_computeShader, 3, unorderedAccessViews, xThreadGroups, 1);
+	deviceContext->CSSetShader(m_computeShader, NULL, 0);
+	deviceContext->Dispatch(xThreadGroups, 1, 1);
 
-	// unorderedAccessViews braucht nicht zu deleted[] werden, da es ein einfaches Array von Pointern auf dem Stack ist
+	// Daten von der GPU kopieren
+	D3D11_MAPPED_SUBRESOURCE MappedResource = { 0 };
+	deviceContext->CopyResource(m_ResultBuffer, m_boundingBoxBuffer);
+	HRESULT result = deviceContext->Map(m_ResultBuffer, 0, D3D11_MAP_READ, 0, &MappedResource);
+	if (FAILED(result))
+	{
+		return;
+	}
+	_Analysis_assume_(MappedResource.pData);
+	assert(MappedResource.pData);
+	// m_BoundingBoxes wird in CreateVertexAndTriangleArray neu initialisiert
+	memcpy(m_BoundingBoxes, MappedResource.pData, m_TriangleCount * sizeof(BoundingBox));
+	deviceContext->Unmap(m_ResultBuffer, 0);
 }
