@@ -418,7 +418,6 @@ bool D3DClass::Initialize(int screenWidth, int screenHeight, bool vsync, HWND hw
 	// Set the depth stencil state.
 	// Sets the depth-stencil state of the output-merger stage
 	m_deviceContext->OMSetDepthStencilState(m_depthStencilState, 1);
-	m_depthStencilState->Release();
 
 	// Initailze the depth stencil view.
 	ZeroMemory(&depthStencilViewDesc, sizeof(depthStencilViewDesc));
