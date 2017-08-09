@@ -2,9 +2,13 @@
 
 #include <vector>
 #include <math.h>
+#include <chrono>
+
 #include "modelclass.h"
 
 #include "Util.h"
+
+using namespace chrono;
 
 class CollisionDetectionManager
 {

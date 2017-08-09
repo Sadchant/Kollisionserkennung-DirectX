@@ -10,6 +10,7 @@ Scene::Scene()
 	//m_LightShader = 0;
 	m_Light = 0;
 	m_CollisionDetectionManager = 0;
+	m_Text = 0;
 }
 
 Scene::Scene(const Scene& other)
@@ -25,7 +26,7 @@ Scene::~Scene()
 bool Scene::Initialize(int screenWidth, int screenHeight, HWND hwnd)
 {
 	bool result;
-
+	XMMATRIX baseViewMatrix;
 
 	// Create the Direct3D object.
 	m_Direct3D = new D3DClass;
@@ -49,9 +50,10 @@ bool Scene::Initialize(int screenWidth, int screenHeight, HWND hwnd)
 		return false;
 	}
 
-	// Set the initial position of the camera.
+	// Initialize a base view matrix with the camera for 2D user interface rendering.
 	m_Camera->SetPosition(0.0f, 0.0f, -5.0f);
-
+	m_Camera->Render();
+	m_Camera->GetViewMatrix(baseViewMatrix);
 
 	// Initialize the model object.
 	result = LoadObjects(m_Direct3D->GetDevice(), hwnd);
@@ -116,9 +118,26 @@ bool Scene::Initialize(int screenWidth, int screenHeight, HWND hwnd)
 		return false;
 	}
 	// The color of the light is set to purple and the light direction is set to point down the positive Z axis.
-		// Initialize the light object.
+	// Initialize the light object.
 	m_Light->SetDiffuseColor(1.0f, 1.0f, 1.0f, 1.0f);
 	m_Light->SetDirection(0.0f, 1.0f, 1.0f);
+
+	// Create the text object.
+	m_Text = new TextClass;
+	if (!m_Text)
+	{
+		return false;
+	}
+
+	// Initialize the text object.
+	result = m_Text->Initialize(m_Direct3D->GetDevice(), m_Direct3D->GetDeviceContext(), hwnd, screenWidth, screenHeight, baseViewMatrix);
+	if (!result)
+	{
+		MessageBox(hwnd, L"Could not initialize the text object.", L"Error", MB_OK);
+		return false;
+	}
+
+
 
 	m_CollisionDetectionManager = new CollisionDetectionManager();
 	m_CollisionDetectionManager->Initialize(m_Direct3D->GetDevice(), m_Direct3D->GetDeviceContext(), hwnd);
@@ -181,6 +200,14 @@ void Scene::Shutdown()
 		delete m_Direct3D;
 		m_Direct3D = 0;
 	}
+	// Release the text object.
+	if (m_Text)
+	{
+		m_Text->Shutdown();
+		delete m_Text;
+		m_Text = 0;
+	}
+
 	if (m_CollisionDetectionManager) 
 	{
 		m_CollisionDetectionManager->Shutdown();
@@ -218,7 +245,7 @@ bool Scene::Frame()
 
 bool Scene::Render(float rotation)
 {
-	XMMATRIX worldMatrix, viewMatrix, projectionMatrix;
+	XMMATRIX worldMatrix, viewMatrix, projectionMatrix, orthoMatrix;
 	bool result;
 
 
@@ -232,6 +259,37 @@ bool Scene::Render(float rotation)
 	m_Direct3D->GetWorldMatrix(worldMatrix);
 	m_Camera->GetViewMatrix(viewMatrix);
 	m_Direct3D->GetProjectionMatrix(projectionMatrix);
+	m_Direct3D->GetOrthoMatrix(orthoMatrix);
+
+
+	// ######################### 2D #########################
+
+	// Wireframe-Fillmode für 2D-Rendering deaktivieren
+	m_Direct3D->TurnOffWireframeFillMode();
+
+
+	// Turn off the Z buffer to begin all 2D rendering.
+	m_Direct3D->TurnZBufferOff();
+
+	// Here we turn on alpha blending so the text will blend with the background.
+	// Turn on the alpha blending before rendering the text.
+	m_Direct3D->TurnOnAlphaBlending();
+	// We call the text object to render all its sentences to the screen here.And just like with 2D images we disable the Z buffer before drawing and then enable it again after all the 2D has been drawn.
+	// Render the text strings.
+	result = m_Text->Render(m_Direct3D->GetDeviceContext(), worldMatrix, orthoMatrix);
+	if (!result)
+	{
+		return false;
+	}
+	// Here we turn off alpha blending so anything else that is drawn will not alpha blend with the objects behind it.
+	// Turn off alpha blending after rendering the text.
+	m_Direct3D->TurnOffAlphaBlending();
+
+	// Turn the Z buffer back on now that all 2D rendering has completed.
+	m_Direct3D->TurnZBufferOn();
+
+	// Wireframe-Fillmode wieder aktivieren
+	m_Direct3D->TurnOnWireframeFillMode();
 
 	//Here we rotate the world matrix by the rotation value so that when we render the triangle using this updated world matrix it will spin the triangle by the rotation amount.
 	// Rotate the world matrix by the rotation value so that the triangle will spin.
@@ -247,15 +305,7 @@ bool Scene::Render(float rotation)
 		}
 	}
 
-	// Render the model using the color shader.
-	//result = m_ColorShader->Render(m_Direct3D->GetDeviceContext(), m_Model->GetIndexCount(), worldMatrix, viewMatrix, projectionMatrix);
-
-	// Render the model using the texture shader.
-	// result = m_TextureShader->Render(m_Direct3D->GetDeviceContext(), m_Model->GetIndexCount(), worldMatrix, viewMatrix, projectionMatrix, m_Model->GetTexture());
-
-	// Render the model using the light shader.
-	/*result = m_LightShader->Render(m_Direct3D->GetDeviceContext(), m_Model->GetIndexCount(), worldMatrix, viewMatrix, projectionMatrix, 
-									m_Light->GetDirection(), m_Light->GetDiffuseColor());*/
+	// ######################### 2D #########################
 	
 
 	// Present the rendered scene to the screen.

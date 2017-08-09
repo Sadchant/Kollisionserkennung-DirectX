@@ -11,6 +11,7 @@
 #include "lightshaderclass.h"
 #include "lightclass.h"
 #include "CollisionDetectionManager.h"
+#include "TextClass.h"
 
 using namespace std;
 
@@ -45,6 +46,10 @@ private:
 	LightClass* m_Light;
 
 	CollisionDetectionManager* m_CollisionDetectionManager;
+
+	// Gehört laut Umbennenung zwar nicht mehr ganz in eine Szene, aber was solls
+	TextClass* m_Text;
+
 
 };
 

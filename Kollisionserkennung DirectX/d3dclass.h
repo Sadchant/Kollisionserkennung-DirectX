@@ -15,8 +15,11 @@
 #include <d3dcommon.h>
 #include <d3d11.h>
 #include <DirectXMath.h>
+#include <iostream>
 
 #include <vector>
+
+#include "Util.h"
 
 using namespace DirectX;
 
@@ -44,6 +47,15 @@ public:
 
 	void GetVideoCardInfo(char*, int&);
 
+	void TurnZBufferOn();
+	void TurnZBufferOff();
+
+	void TurnOnAlphaBlending();
+	void TurnOffAlphaBlending();
+
+	void TurnOnWireframeFillMode();
+	void TurnOffWireframeFillMode();
+
 private:
 	bool m_vsync_enabled;
 	int m_videoCardMemory;
@@ -56,9 +68,18 @@ private:
 	ID3D11DepthStencilState* m_depthStencilState; // holds a description for depth-stencil state that you can bind to the output-merger stage, wird auch nicht beim Rendern benötigt
 	ID3D11DepthStencilView* m_depthStencilView; // accesses a texture resource during depth-stencil testing
 	ID3D11RasterizerState* m_rasterState;
+
+	D3D11_RASTERIZER_DESC m_RasterDesc; // Describes rasterizer state, Struktur mit Daten, wie der Rasterisierer so rasterisieren soll
+
+
 	XMMATRIX m_projectionMatrix;
 	XMMATRIX m_worldMatrix;
 	XMMATRIX m_orthoMatrix;
+
+	ID3D11DepthStencilState* m_depthDisabledStencilState;
+
+	ID3D11BlendState* m_alphaEnableBlendingState;
+	ID3D11BlendState* m_alphaDisableBlendingState;
 };
 
 #endif

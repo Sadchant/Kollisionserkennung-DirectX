@@ -10,6 +10,9 @@ D3DClass::D3DClass()
 	m_depthStencilState = NULL;
 	m_depthStencilView = NULL;
 	m_rasterState = NULL;
+	m_depthDisabledStencilState = 0;
+	m_alphaEnableBlendingState = NULL;
+	m_alphaDisableBlendingState = NULL;
 }
 
 
@@ -32,9 +35,9 @@ bool D3DClass::Initialize(int screenWidth, int screenHeight, bool vsync, HWND hw
 	IDXGIFactory* factory; // Factory, die DXGI-Objekte erzeugen kann, die sich um Vollbild-Umschaltungen kümmern
 	IDXGIAdapter* adapter; // repräsentiert ein "Display sub-system", also eigentlich eingebaute Grafikkarten
 	//IDXGIOutput* adapterOutput; // An IDXGIOutput interface represents an adapter output (such as a monitor)
-	unsigned int numModes, i, numerator, denominator;
+	unsigned int numerator, denominator;
 	size_t stringLength; // kein uint, damit es für x64 compiliert
-	DXGI_MODE_DESC* displayModeList; // Describes a display mode, Struktur mit Höhe, Breite, Widerholrate, "Scaling"(wtf :P)
+	//DXGI_MODE_DESC* displayModeList; // Describes a display mode, Struktur mit Höhe, Breite, Widerholrate, "Scaling"(wtf :P)
 	DXGI_ADAPTER_DESC adapterDesc; // Describes an adapter (or video card), Struktur mit Infos über Grafikkarte mit IDs, Speichergröße usw.
 	int error;
 	DXGI_SWAP_CHAIN_DESC swapChainDesc; // Describes a swap chain, Struktur mit Backbuffer-Geraffel
@@ -44,10 +47,12 @@ bool D3DClass::Initialize(int screenWidth, int screenHeight, bool vsync, HWND hw
 	D3D11_DEPTH_STENCIL_DESC depthStencilDesc; // Describes depth-stencil state, hat was mit Tiefeninformationen zu tun, vielleicht um nach dem Plattdrücken
 											   // das richtige Objekt vorne zu rendern?
 	D3D11_DEPTH_STENCIL_VIEW_DESC depthStencilViewDesc; // Specifies the subresources of a texture that are accessible from a depth-stencil view
-	D3D11_RASTERIZER_DESC rasterDesc; // Describes rasterizer state, Struktur mit Daten, wie der Rasterisierer so rasterisieren soll
 	D3D11_VIEWPORT viewport; // Defines the dimensions of a viewport, A viewport is a way of translating pixel coordinates to normalized coordinates
 							 // Pixelkoordinaten sind die normalen Fensterkoordinaten, normalisierte gehen von -1 bis 1
 	float fieldOfView, screenAspect;
+
+	D3D11_DEPTH_STENCIL_DESC depthDisabledStencilDesc;
+	D3D11_BLEND_DESC blendStateDescription;
 
 
 	// Store the vsync setting.
@@ -81,7 +86,7 @@ bool D3DClass::Initialize(int screenWidth, int screenHeight, bool vsync, HWND hw
 		vAdapters.push_back(adapter);
 		++j;
 	}
-	
+
 	// j - 2 sollte auf einem PC = 0 ergeben, auf einem Laptop = 1, somit dedizierte GPU
 	// j - 1 ergibt den 
 	if (j > 1)
@@ -181,7 +186,7 @@ bool D3DClass::Initialize(int screenWidth, int screenHeight, bool vsync, HWND hw
 	//adapterOutput->Release();
 	//adapterOutput = 0;
 
-	
+
 
 	// Release the factory.
 	factory->Release();
@@ -279,7 +284,7 @@ bool D3DClass::Initialize(int screenWidth, int screenHeight, bool vsync, HWND hw
 	}
 
 	// Adapter-Vector wieder freigeben
-	for (IDXGIAdapter* curAdapater : vAdapters) 
+	for (IDXGIAdapter* curAdapater : vAdapters)
 	{
 		curAdapater->Release();
 	}
@@ -464,42 +469,42 @@ bool D3DClass::Initialize(int screenWidth, int screenHeight, bool vsync, HWND hw
 	} D3D11_RASTERIZER_DESC;*/
 
 	// Specifies whether to enable line antialiasing; only applies if doing line drawing and MultisampleEnable is FALSE
-	rasterDesc.AntialiasedLineEnable = false;
+	m_RasterDesc.AntialiasedLineEnable = false;
 
 	// Indicates triangles facing the specified direction are not drawn
 	// die angegebene Seite wird wohl nicht gerendert, es gibt NONE, FRONT und BACK
-	rasterDesc.CullMode = D3D11_CULL_BACK;
+	m_RasterDesc.CullMode = D3D11_CULL_BACK;
 
 	// Depth value added to a given pixel
 	// wenn zwei Polygone an der selben Position liegen (zB bei Schatten) entscheided der höhere Depth Bias Wert, welches gerendert wird
-	rasterDesc.DepthBias = 0;
+	m_RasterDesc.DepthBias = 0;
 
 	// Maximum depth bias of a pixel, wird hier wohl vorerst sowieso nicht benutzt
-	rasterDesc.DepthBiasClamp = 0.0f;
+	m_RasterDesc.DepthBiasClamp = 0.0f;
 
 	// Enable clipping based on distance.
 	// The hardware always performs x and y clipping of rasterized coordinates.When DepthClipEnable is set to the default–TRUE, the hardware also clips the z value
 	// (that is, the hardware performs the last step of the following algorithm).
-	rasterDesc.DepthClipEnable = true;
+	m_RasterDesc.DepthClipEnable = true;
 
 	// Determines the fill mode to use when rendering triangles, D3D11_FILL_WIREFRAME geht auch
-	rasterDesc.FillMode = D3D11_FILL_WIREFRAME;
+	m_RasterDesc.FillMode = /*D3D11_FILL_SOLID*/ D3D11_FILL_WIREFRAME;
 
 	// Determines if a triangle is front- or back-facing. If this parameter is TRUE, a triangle will be considered front-facing if its vertices 
 	// are counter-clockwise on the render target and considered back-facing if they are clockwise. If this parameter is FALSE, the opposite is true.
-	rasterDesc.FrontCounterClockwise = false;
+	m_RasterDesc.FrontCounterClockwise = false;
 
 	// Specifies whether to use the quadrilateral or alpha line anti-aliasing algorithm on multisample antialiasing (MSAA) render targets
-	rasterDesc.MultisampleEnable = false;
+	m_RasterDesc.MultisampleEnable = false;
 
 	// Enable scissor-rectangle culling. All pixels outside an active scissor rectangle are culled.
-	rasterDesc.ScissorEnable = false;
+	m_RasterDesc.ScissorEnable = false;
 
 	// Scalar on a given pixel's slope, hat noch was mit dem Depth Bias zu tun
-	rasterDesc.SlopeScaledDepthBias = 0.0f;
+	m_RasterDesc.SlopeScaledDepthBias = 0.0f;
 
 	// Create the rasterizer state from the description we just filled out.
-	result = m_device->CreateRasterizerState(&rasterDesc, &m_rasterState);
+	result = m_device->CreateRasterizerState(&m_RasterDesc, &m_rasterState);
 	if (FAILED(result))
 	{
 		return false;
@@ -546,6 +551,69 @@ bool D3DClass::Initialize(int screenWidth, int screenHeight, bool vsync, HWND hw
 	// Builds a left-handed orthographic projection matrix und füllt sie in Parameter 1
 	m_orthoMatrix = XMMatrixOrthographicLH((float)screenWidth, (float)screenHeight, screenNear, screenDepth);
 
+	// Clear the second depth stencil state before setting the parameters.
+	ZeroMemory(&depthDisabledStencilDesc, sizeof(depthDisabledStencilDesc));
+
+	// Now create a second depth stencil state which turns off the Z buffer for 2D rendering.  The only difference is 
+	// that DepthEnable is set to false, all other parameters are the same as the other depth stencil state.
+	depthDisabledStencilDesc.DepthEnable = false;
+	depthDisabledStencilDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
+	depthDisabledStencilDesc.DepthFunc = D3D11_COMPARISON_LESS;
+	depthDisabledStencilDesc.StencilEnable = true;
+	depthDisabledStencilDesc.StencilReadMask = 0xFF;
+	depthDisabledStencilDesc.StencilWriteMask = 0xFF;
+	depthDisabledStencilDesc.FrontFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
+	depthDisabledStencilDesc.FrontFace.StencilDepthFailOp = D3D11_STENCIL_OP_INCR;
+	depthDisabledStencilDesc.FrontFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
+	depthDisabledStencilDesc.FrontFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
+	depthDisabledStencilDesc.BackFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
+	depthDisabledStencilDesc.BackFace.StencilDepthFailOp = D3D11_STENCIL_OP_DECR;
+	depthDisabledStencilDesc.BackFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
+	depthDisabledStencilDesc.BackFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
+	// Now create the new depth stencil.
+		// Create the state using the device.
+		result = m_device->CreateDepthStencilState(&depthDisabledStencilDesc, &m_depthDisabledStencilState);
+	if (FAILED(result))
+	{
+		return false;
+	}
+
+	// First initialize the blend state description.
+		// Clear the blend state description.
+	ZeroMemory(&blendStateDescription, sizeof(D3D11_BLEND_DESC));
+
+	// To create an alpha enabled blend state description change BlendEnable to TRUE and DestBlend to D3D11_BLEND_INV_SRC_ALPHA.
+	// The other settings are set to their default values which can be looked up in the Windows DirectX Graphics Documentation.
+		// Create an alpha enabled blend state description.
+	blendStateDescription.RenderTarget[0].BlendEnable = TRUE;
+	blendStateDescription.RenderTarget[0].SrcBlend = D3D11_BLEND_ONE;
+	blendStateDescription.RenderTarget[0].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
+	blendStateDescription.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
+	blendStateDescription.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_ONE;
+	blendStateDescription.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_ZERO;
+	blendStateDescription.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
+	blendStateDescription.RenderTarget[0].RenderTargetWriteMask = 0x0f;
+
+	// We then create an alpha enabled blending state using the description we just setup.
+		// Create the blend state using the description.
+	result = m_device->CreateBlendState(&blendStateDescription, &m_alphaEnableBlendingState);
+	if (FAILED(result))
+	{
+		return false;
+	}
+	// Now to create an alpha disabled state we change the description we just made to set BlendEnable to FALSE.The rest of the settings
+	// can be left as they are.
+		// Modify the description to create an alpha disabled blend state description.
+	blendStateDescription.RenderTarget[0].BlendEnable = FALSE;
+	// We then create an alpha disabled blending state using the modified blend state description.We now have two blending states we can
+		// switch between to turn on and off alpha blending.
+		// Create the blend state using the description.
+	result = m_device->CreateBlendState(&blendStateDescription, &m_alphaDisableBlendingState);
+	if (FAILED(result))
+	{
+		return false;
+	}
+
 	return true;
 }
 
@@ -555,6 +623,22 @@ void D3DClass::Shutdown()
 	if (m_swapChain)
 	{
 		m_swapChain->SetFullscreenState(false, NULL);
+	}
+	if (m_alphaEnableBlendingState)
+	{
+		m_alphaEnableBlendingState->Release();
+		m_alphaEnableBlendingState = 0;
+	}
+
+	if (m_alphaDisableBlendingState)
+	{
+		m_alphaDisableBlendingState->Release();
+		m_alphaDisableBlendingState = 0;
+	}
+	if (m_depthDisabledStencilState)
+	{
+		m_depthDisabledStencilState->Release();
+		m_depthDisabledStencilState = 0;
 	}
 
 	if (m_rasterState)
@@ -604,6 +688,46 @@ void D3DClass::Shutdown()
 		m_swapChain->Release();
 		m_swapChain = 0;
 	}
+
+	return;
+}
+
+// The first new function TurnOnAlphaBlending allows us to turn on alpha blending by using the OMSetBlendState function with our 
+// m_alphaEnableBlendingState blending state.
+void D3DClass::TurnOnAlphaBlending()
+{
+	float blendFactor[4];
+
+
+	// Setup the blend factor.
+	blendFactor[0] = 0.0f;
+	blendFactor[1] = 0.0f;
+	blendFactor[2] = 0.0f;
+	blendFactor[3] = 0.0f;
+
+	// Turn on the alpha blending.
+	m_deviceContext->OMSetBlendState(m_alphaEnableBlendingState, blendFactor, 0xffffffff);
+
+	
+
+	return;
+}
+
+// The second new function TurnOffAlphaBlending allows us to turn off alpha blending by using the OMSetBlendState function with our 
+// m_alphaDisableBlendingState blending state.
+void D3DClass::TurnOffAlphaBlending()
+{
+	float blendFactor[4];
+
+
+	// Setup the blend factor.
+	blendFactor[0] = 0.0f;
+	blendFactor[1] = 0.0f;
+	blendFactor[2] = 0.0f;
+	blendFactor[3] = 0.0f;
+
+	// Turn off the alpha blending.
+	m_deviceContext->OMSetBlendState(m_alphaDisableBlendingState, blendFactor, 0xffffffff);
 
 	return;
 }
@@ -684,6 +808,41 @@ void D3DClass::GetVideoCardInfo(char* cardName, int& memory)
 	strcpy_s(cardName, 128, m_videoCardDescription);
 	memory = m_videoCardMemory;
 	return;
+}
+
+void D3DClass::TurnZBufferOn()
+{
+	m_deviceContext->OMSetDepthStencilState(m_depthStencilState, 1);
+	return;
+}
+
+
+void D3DClass::TurnZBufferOff()
+{
+	m_deviceContext->OMSetDepthStencilState(m_depthDisabledStencilState, 1);
+	return;
+}
+
+void D3DClass::TurnOnWireframeFillMode() 
+{
+	m_RasterDesc.FillMode = D3D11_FILL_WIREFRAME;
+	HRESULT result = m_device->CreateRasterizerState(&m_RasterDesc, &m_rasterState);
+	if (FAILED(result))
+	{
+		cout << "RABÄÄH RasterizerState konnte nicht created werden! :(" << endl;
+	}
+	m_deviceContext->RSSetState(m_rasterState);
+}
+
+void D3DClass::TurnOffWireframeFillMode()
+{
+	m_RasterDesc.FillMode = D3D11_FILL_SOLID;
+	HRESULT result = m_device->CreateRasterizerState(&m_RasterDesc, &m_rasterState);
+	if (FAILED(result))
+	{
+		cout << "RABÄÄH RasterizerState konnte nicht created werden! :(" << endl;
+	}
+	m_deviceContext->RSSetState(m_rasterState);
 }
 
 

@@ -273,6 +273,7 @@ void CollisionDetectionManager::OutputShaderErrorMessage(ID3D10Blob* errorMessag
 
 void CollisionDetectionManager::Frame(vector<ModelClass*>* objects)
 {
+	auto begin = high_resolution_clock::now();
 	CreateVertexAndTriangleArray(objects);
 	D3D11_SUBRESOURCE_DATA vertexSubresourceData = D3D11_SUBRESOURCE_DATA { m_Vertices, 0, 0 };
 	D3D11_SUBRESOURCE_DATA triangleSubresourceData = D3D11_SUBRESOURCE_DATA{ m_Triangles, 0, 0 };
@@ -307,6 +308,11 @@ void CollisionDetectionManager::Frame(vector<ModelClass*>* objects)
 	deviceContext->CSSetShader(m_computeShader, NULL, 0);
 	deviceContext->Dispatch(xThreadGroups, 1, 1);
 
+	auto end = high_resolution_clock::now(); 
+	cout << "Buffer erzeugt, Dispatch erfolgt" << ": " << duration_cast<milliseconds>(end - begin).count() << "ms" << endl;
+
+	begin = high_resolution_clock::now();
+
 	// Daten von der GPU kopieren
 	D3D11_MAPPED_SUBRESOURCE MappedResource = { 0 };
 	deviceContext->CopyResource(m_ResultBuffer, m_boundingBoxBuffer);
@@ -320,4 +326,7 @@ void CollisionDetectionManager::Frame(vector<ModelClass*>* objects)
 	// m_BoundingBoxes wird in CreateVertexAndTriangleArray neu initialisiert
 	memcpy(m_BoundingBoxes, MappedResource.pData, m_TriangleCount * sizeof(BoundingBox));
 	deviceContext->Unmap(m_ResultBuffer, 0);
+
+	end = high_resolution_clock::now();
+	cout << "Buffer erzeugt, Dispatch erfolgt" << ": " << duration_cast<milliseconds>(end - begin).count() << "ms" << endl;
 }
