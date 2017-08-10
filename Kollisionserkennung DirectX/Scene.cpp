@@ -182,9 +182,9 @@ void Scene::Shutdown()
 
 	for (int i = 0; i < m_Objects.size(); i++)
 	{
-		ModelClass* aktModelClass = m_Objects[i];
-		aktModelClass->Shutdown();
-		delete aktModelClass;
+		ModelClass* curModelClass = m_Objects[i];
+		curModelClass->Shutdown();
+		delete curModelClass;
 	}
 	m_Objects.clear();
 

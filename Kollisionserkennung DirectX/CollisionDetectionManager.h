@@ -16,8 +16,6 @@ public:
 	CollisionDetectionManager();
 	~CollisionDetectionManager();
 	void Initialize(ID3D11Device * device, ID3D11DeviceContext* deviceContext, HWND hwnd);
-	void CreateVertexAndTriangleArray(vector<ModelClass*>* objects);
-	void ReleaseArrays();
 	void Shutdown();
 
 	bool CreateComputeShader(HWND hwnd, WCHAR * csFilename);
@@ -27,11 +25,9 @@ public:
 
 	ID3D11ShaderResourceView * CreateBufferShaderResourceView(ID3D11Resource * pResource, int elementCount);
 
-	void RunComputeShader(ID3D11ComputeShader * computeShader, int uavCount, ID3D11UnorderedAccessView **unorderedAccessViews, int xThreadCount, int yThreadCount);
-
 	void OutputShaderErrorMessage(ID3D10Blob * errorMessage, HWND hwnd, WCHAR * shaderFilename);
 
-	void Frame(vector<ModelClass*>* objects);
+	bool Frame(vector<ModelClass*>* objects);
 
 private:
 	struct Vertex
@@ -44,7 +40,7 @@ private:
 	};
 	struct Triangle
 	{
-		int aIndex, bIndex, cIndex;
+		int vertexIndices[3];
 	};
 	struct BoundingBox
 	{
@@ -52,23 +48,33 @@ private:
 		Vector volumeVector;
 	};
 
+	void CreateVertexAndTriangleArray(vector<ModelClass*>* objects);
+	void ReleaseBuffersAndViews();
+	
 	ID3D11Device* device;
 	ID3D11DeviceContext* deviceContext;
 	int m_VertexCount;
 	int m_TriangleCount;
+	int m_ObjectCount;
 	Vertex* m_Vertices; // beinhaltet alle Punkte, also dreimal so viele wie es indices gibt
 	Triangle* m_Triangles;
+	int* m_ObjectsLastIndices; // hält pro Objekt den letzten Index, der zu diesem Objekt gehört
 	BoundingBox* m_BoundingBoxes; // wird von der GPU befüllt!
-	ID3D11ComputeShader* m_computeShader; // managed ein ausführbares Programm (einen Vertex-Shader)
+	ID3D11ComputeShader* m_ComputeShader; // managed ein ausführbares Programm (einen Vertex-Shader)
 
-	ID3D11Buffer* m_vertexBuffer;
-	ID3D11Buffer* m_triangleBuffer;
-	ID3D11Buffer* m_boundingBoxBuffer;
-	ID3D11Buffer* m_ResultBuffer;
+	ID3D11Buffer* m_Vertex_Buffer;
+	ID3D11Buffer* m_Triangle_Buffer;
+	ID3D11Buffer* m_ObjectsLastIndices_Buffer;
+	ID3D11Buffer* m_BoundingBox_Buffer;
+	ID3D11Buffer* m_Result_Buffer;
 
-	ID3D11ShaderResourceView* m_VertexShaderResourceView;
-	ID3D11ShaderResourceView* m_TriangleShaderResourceView;
-	ID3D11UnorderedAccessView* m_BoundingBoxUnorderedAccessView;
+	ID3D11ShaderResourceView* m_Vertex_SRV;
+	ID3D11ShaderResourceView* m_Triangle_SRV;
+	ID3D11ShaderResourceView* m_ObjectsLastIndices_SRV;
+
+	ID3D11UnorderedAccessView* m_BoundingBox_UAV;
+
+
 
 };
 

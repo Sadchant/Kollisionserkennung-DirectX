@@ -1,37 +1,59 @@
-#pragma enable_d3d11_debug_symbols
-
-struct Vertex
-{
-	float x, y, z;
-};
-struct Vector
-{
-	float x, y, z;
-};
-struct Triangle
-{
-	int aIndex, bIndex, cIndex;
-};
 struct BoundingBox
 {
-	Vertex position;
-	Vector volumeVector;
+    float3 position;
+    float3 volumeVector;
 };
 
-StructuredBuffer<Vertex> vertexBuffer;
-StructuredBuffer<Triangle> triangleBuffer;
-RWStructuredBuffer<BoundingBox> boundingBoxBuffer;
+StructuredBuffer<float3> vertexBuffer : register(t0);
+StructuredBuffer<int3> triangleBuffer : register(t1);
+
+RWStructuredBuffer<BoundingBox> boundingBoxBuffer : register(u0);
 
 [numthreads(1024, 1, 1)]
-void main( uint3 DTid : SV_DispatchThreadID )
+void main(uint3 DTid : SV_DispatchThreadID)
 {
-	Vertex min, max;
-	uint numStructs, stride;
-	triangleBuffer.GetDimensions(numStructs, stride);
+    // merke dir die ThreadId dieses Threads in id (.x, da eindimensionale Struktur)
+    uint id = DTid.x;
 
-	if (DTid.x > numStructs) return;
+    // Größe des Buffers ermitteln
+    uint numStructs, stride;
+    triangleBuffer.GetDimensions(numStructs, stride);
 
-	BoundingBox bb = { {1,2,3},{numStructs, numStructs, numStructs} };
-	boundingBoxBuffer[DTid.x] = bb;
-	
+    // es werden immer Blöcke mit 1024 Threads gestartet, die Threads, welche Dreiecke mit
+    // IDs außerhalb des Dreiecksbuffers bearbeiten wollen, machen stattdessen nichts
+    if (id > numStructs)
+        return;
+
+    // hole das aktuelle Dreieck aus dem Buffer
+    int3 _triangle = triangleBuffer[id];
+    // initialisiere min und max mit dem ersten Punkt des Dreiecks
+    float3 min, max; 
+    min = max = vertexBuffer[_triangle[0]];
+
+    // durchlaufe Punkte b und c des Dreiecks, um den jeweils kleinsten/größten Punkt pro 
+    // Dimension zu finden und in min/max zu speichern
+    for (int i = 1; i <= 2; i++)
+    {
+        // hole dir einmal den aktuellen Vertex um nicht immer auf den Buffer zugreifen zu müssen
+        float3 curVertex = vertexBuffer[_triangle[i]];
+        // korrigiere den min-Vertex
+        if (curVertex.x < min.x) 
+            min.x = curVertex.x;
+        if (curVertex.y < min.y)
+            min.y = curVertex.y;
+        if (curVertex.z < min.z)
+            min.x = curVertex.x;
+
+        // korrigiere max-Vertex
+        if (curVertex.x > max.x) 
+            max.x = curVertex.x;
+        if (curVertex.y > max.y)
+            max.y = curVertex.y;
+        if (curVertex.z > max.z)
+            max.x = curVertex.x;
+    }
+
+    // speichere das Ergebnis im BoundingBoxBuffer
+    BoundingBox boundingBox = { min, max };
+    boundingBoxBuffer[id] = boundingBox;
 }
