@@ -6,7 +6,7 @@
 #include <d3d11.h>
 #include <directxmath.h>
 #include <D3Dcompiler.h>
-#include <fstream>
+#include <iostream>
 using namespace std;
 using namespace DirectX;
 
