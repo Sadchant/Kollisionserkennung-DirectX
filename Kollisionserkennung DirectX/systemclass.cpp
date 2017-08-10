@@ -4,6 +4,9 @@ SystemClass::SystemClass()
 {
 	m_Input = NULL;
 	m_Scene = NULL;
+	m_Fps = 0;
+	m_Cpu = 0;
+	m_Timer = 0;
 }
 
 SystemClass::SystemClass(const SystemClass& other)
@@ -51,12 +54,71 @@ bool SystemClass::Initialize()
 		return false;
 	}
 
+	// Create the fps object.
+	m_Fps = new FpsClass;
+	if (!m_Fps)
+	{
+		return false;
+	}
+
+	// Initialize the fps object.
+	m_Fps->Initialize();
+
+	// Create the cpu object.
+	m_Cpu = new CpuClass;
+	if (!m_Cpu)
+	{
+		return false;
+	}
+
+	// Initialize the cpu object.
+	m_Cpu->Initialize();
+
+	// Create the timer object.
+	m_Timer = new TimerClass;
+	if (!m_Timer)
+	{
+		return false;
+	}
+
+	// Initialize the timer object.
+	result = m_Timer->Initialize();
+	if (!result)
+	{
+		MessageBox(m_hwnd, L"Could not initialize the Timer object.", L"Error", MB_OK);
+		return false;
+	}
+
+
+
 	return true;
 }
 
 void SystemClass::Shutdown()
 {
-	// Release the graphics object.
+	// Release the timer object.
+	if (m_Timer)
+	{
+		delete m_Timer;
+		m_Timer = 0;
+	}
+
+	// Release the cpu object.
+	if (m_Cpu)
+	{
+		m_Cpu->Shutdown();
+		delete m_Cpu;
+		m_Cpu = 0;
+	}
+
+	// Release the fps object.
+	if (m_Fps)
+	{
+		delete m_Fps;
+		m_Fps = 0;
+	}
+
+	// Release the Scene.
 	if (m_Scene)
 	{
 		m_Scene->Shutdown();
@@ -122,6 +184,10 @@ bool SystemClass::Frame()
 {
 	bool result;
 
+	// Update the system stats.
+	m_Timer->Frame();
+	m_Fps->Frame();
+	m_Cpu->Frame();
 
 	// Check if the user pressed escape and wants to exit the application.
 	if (m_Input->IsKeyDown(VK_ESCAPE))
@@ -130,7 +196,7 @@ bool SystemClass::Frame()
 	}
 
 	// Do the frame processing for the graphics object.
-	result = m_Scene->Frame();
+	result = m_Scene->Frame(m_Fps->GetFps(), m_Cpu->GetCpuPercentage(), m_Timer->GetTime());
 	if (!result)
 	{
 		return false;
@@ -140,33 +206,33 @@ bool SystemClass::Frame()
 }
 
 LRESULT CALLBACK SystemClass::MessageHandler(HWND hwnd,			// wird an DefWindowProc weitergeleitet 
-											UINT umsg,			// beinhaltet WM_KEYDOWN, WM_KEYUP etc.
-											WPARAM wparam,		// beinhaltet die Taste, die gedrückt wurde
-											LPARAM lparam)		// wird an DefWindowProc weitergeleitet 
+	UINT umsg,			// beinhaltet WM_KEYDOWN, WM_KEYUP etc.
+	WPARAM wparam,		// beinhaltet die Taste, die gedrückt wurde
+	LPARAM lparam)		// wird an DefWindowProc weitergeleitet 
 {
 	switch (umsg)
 	{
 		// Check if a key has been pressed on the keyboard.
 	case WM_KEYDOWN:
 	{
-					   // If a key is pressed send it to the input object so it can record that state.
-					   m_Input->KeyDown((unsigned int)wparam);
-					   return 0;
+		// If a key is pressed send it to the input object so it can record that state.
+		m_Input->KeyDown((unsigned int)wparam);
+		return 0;
 	}
 
-		// Check if a key has been released on the keyboard.
+	// Check if a key has been released on the keyboard.
 	case WM_KEYUP:
 	{
-					 // If a key is released then send it to the input object so it can unset the state for that key.
-					 m_Input->KeyUp((unsigned int)wparam);
-					 return 0;
+		// If a key is released then send it to the input object so it can unset the state for that key.
+		m_Input->KeyUp((unsigned int)wparam);
+		return 0;
 	}
 
-		// Any other messages send to the default message handler as our application won't make use of them.
+	// Any other messages send to the default message handler as our application won't make use of them.
 	default:
 	{
-			   //stellt sicher, dass jede message verarbeitet wird
-			   return DefWindowProc(hwnd, umsg, wparam, lparam);
+		//stellt sicher, dass jede message verarbeitet wird
+		return DefWindowProc(hwnd, umsg, wparam, lparam);
 	}
 	}
 }
@@ -174,7 +240,7 @@ LRESULT CALLBACK SystemClass::MessageHandler(HWND hwnd,			// wird an DefWindowPr
 void SystemClass::InitializeWindows(int& screenWidth, int& screenHeight)
 {
 	// eine Struktur für die Instanz eines Fensters (oder so)
-	WNDCLASSEX wc;		
+	WNDCLASSEX wc;
 
 	// Eigenschaften von Monitor (und Drucker)
 	DEVMODE dmScreenSettings;
@@ -200,12 +266,12 @@ void SystemClass::InitializeWindows(int& screenWidth, int& screenHeight)
 	wc.cbWndExtra = 0;										// Anzahl der Bytes, die hinter der Fenster-Instanz allokiert werden sollen (DLGWINDOWEXTRA, wenn dialogbox benutzt werden soll)
 	wc.hInstance = m_hinstance;								// handle der Instanz, die die Fenster-Methode beinhaltet
 	wc.hIcon												// handle des Icons der Klasse
-				= LoadIcon(NULL, IDI_WINLOGO);					// erster Parameter NULL, da StandartIcon, zweiter ein Flag
+		= LoadIcon(NULL, IDI_WINLOGO);					// erster Parameter NULL, da StandartIcon, zweiter ein Flag
 	wc.hIconSm = wc.hIcon;									// handle eines kleinen Icons
 	wc.hCursor												// handle des Klassen-Maus-Cursors
-				= LoadCursor(NULL, IDC_ARROW);					// erster Parameter NULL, da keine Module-Instanz vorhanden, zweiter ein Flag
+		= LoadCursor(NULL, IDC_ARROW);					// erster Parameter NULL, da keine Module-Instanz vorhanden, zweiter ein Flag
 	wc.hbrBackground										// handle des Klassen-Hintergrunds
-				= (HBRUSH)GetStockObject(BLACK_BRUSH);			// gibt handle auf stock fonts/pens/brushes zurück
+		= (HBRUSH)GetStockObject(BLACK_BRUSH);			// gibt handle auf stock fonts/pens/brushes zurück
 	wc.lpszMenuName = NULL;									// Zeiger auf einen Resourcen-Namen des Klassen-Menus, bei NULL gibt es kein Default-Menu
 	wc.lpszClassName = m_applicationName;					// atom oder String, bei String der Name des Fensters
 	wc.cbSize = sizeof(WNDCLASSEX);							// Größe der Struktur
@@ -244,25 +310,25 @@ void SystemClass::InitializeWindows(int& screenWidth, int& screenHeight)
 		screenWidth = 800;
 		screenHeight = 600;
 
-	// Place the window in the middle of the screen.
+		// Place the window in the middle of the screen.
 		posX = (GetSystemMetrics(SM_CXSCREEN) - screenWidth) / 2;
 		posY = (GetSystemMetrics(SM_CYSCREEN) - screenHeight) / 2;
 	}
 
 	// Create the window with the screen settings and get the handle to it.
 	m_hwnd = CreateWindowEx(WS_EX_APPWINDOW,
-							m_applicationName, 
-							m_applicationName,
-							//WS_CLIPSIBLINGS | WS_CLIPCHILDREN | WS_POPUP,
-							WS_VISIBLE | WS_OVERLAPPED | WS_MINIMIZEBOX | WS_SYSMENU,
-							posX, 
-							posY, 
-							screenWidth, 
-							screenHeight, 
-							NULL, 
-							NULL, 
-							m_hinstance, 
-							NULL);
+		m_applicationName,
+		m_applicationName,
+		//WS_CLIPSIBLINGS | WS_CLIPCHILDREN | WS_POPUP,
+		WS_VISIBLE | WS_OVERLAPPED | WS_MINIMIZEBOX | WS_SYSMENU,
+		posX,
+		posY,
+		screenWidth,
+		screenHeight,
+		NULL,
+		NULL,
+		m_hinstance,
+		NULL);
 
 	// Bring the window up on the screen and set it as main focus.
 	ShowWindow(m_hwnd, SW_SHOW);
@@ -309,9 +375,9 @@ void SystemClass::ShutdownWindows()
 // LRESULT: Zeiger auf long-Variable
 // CALLBACK: Zeiger auf eine Funktion
 LRESULT CALLBACK WndProc(HWND hwnd,		// "Henkel" von einem Fenster, letztendlich ein Zeiger auf ein Fenster |||| WIRD NUR AN MH WEITERGEREICHT
-						UINT umessage,	// unsigned integer, darüber wird gesitcht
-						WPARAM wparam,	// message paramter (wtf?), letztendlich ein unsigned int der auch 64 bit groß sein kann |||| WIRD NUR AN MH WEITERGEREICHT
-						LPARAM lparam)	// message parameter |||| WIRD NUR AN MH WEITERGEREICHT
+	UINT umessage,	// unsigned integer, darüber wird gesitcht
+	WPARAM wparam,	// message paramter (wtf?), letztendlich ein unsigned int der auch 64 bit groß sein kann |||| WIRD NUR AN MH WEITERGEREICHT
+	LPARAM lparam)	// message parameter |||| WIRD NUR AN MH WEITERGEREICHT
 {
 	// gibt entweder 0 zurück wenn umessage WMDESTROY oder CLOSE ist, ansonsten das ergebnis von messagehandler()
 	switch (umessage)
@@ -319,21 +385,21 @@ LRESULT CALLBACK WndProc(HWND hwnd,		// "Henkel" von einem Fenster, letztendlich
 		// Check if the window is being destroyed.
 	case WM_DESTROY:
 	{
-					   PostQuitMessage(0); // sagt dem System, dass der Thread geschlossen werden will
-					   return 0;
+		PostQuitMessage(0); // sagt dem System, dass der Thread geschlossen werden will
+		return 0;
 	}
 
-		// Check if the window is being closed.
+	// Check if the window is being closed.
 	case WM_CLOSE:
 	{
-					 PostQuitMessage(0);
-					 return 0;
+		PostQuitMessage(0);
+		return 0;
 	}
 
-		// All other messages pass to the message handler in the system class.
+	// All other messages pass to the message handler in the system class.
 	default:
 	{
-			   return ApplicationHandle->MessageHandler(hwnd, umessage, wparam, lparam);
+		return ApplicationHandle->MessageHandler(hwnd, umessage, wparam, lparam);
 	}
 	}
 }

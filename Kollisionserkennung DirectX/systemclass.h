@@ -7,6 +7,11 @@
 #include "inputclass.h"
 #include "Scene.h"
 
+#include "FpsClass.h"
+#include "CpuClass.h"
+#include "TimerClass.h"
+
+
 using namespace std;
 
 class SystemClass
@@ -34,6 +39,10 @@ private:
 
 	InputClass* m_Input;
 	Scene* m_Scene;
+
+	FpsClass* m_Fps;
+	CpuClass* m_Cpu;
+	TimerClass* m_Timer;
 };
 
 static LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);

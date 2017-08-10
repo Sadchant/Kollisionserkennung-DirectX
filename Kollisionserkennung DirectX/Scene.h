@@ -29,7 +29,7 @@ public:
 
 	bool Initialize(int, int, HWND);
 	void Shutdown();
-	bool Frame();
+	bool Frame(int, int, float);
 
 private:
 	bool Render(float);
@@ -47,7 +47,7 @@ private:
 
 	CollisionDetectionManager* m_CollisionDetectionManager;
 
-	// Gehört laut Umbennenung zwar nicht mehr ganz in eine Szene, aber was solls
+	// Gehört wegen der Umbennenung (hieß ja eig GraphicsClass) zwar nicht mehr ganz in eine Szene, aber was solls
 	TextClass* m_Text;
 
 

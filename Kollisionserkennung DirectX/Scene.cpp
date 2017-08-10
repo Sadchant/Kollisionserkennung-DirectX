@@ -218,9 +218,24 @@ void Scene::Shutdown()
 }
 
 
-bool Scene::Frame()
+bool Scene::Frame(int fps, int cpu, float frameTime)
 {
 	bool result;
+
+	// Set the frames per second.
+	result = m_Text->SetFps(fps, m_Direct3D->GetDeviceContext());
+	if (!result)
+	{
+		return false;
+	}
+
+	// Set the cpu usage.
+	result = m_Text->SetCpu(cpu, m_Direct3D->GetDeviceContext());
+	if (!result)
+	{
+		return false;
+	}
+
 
 	static float rotation = 0.0f;
 
@@ -319,14 +334,23 @@ bool Scene::Render(float rotation)
 bool Scene::LoadObjects(ID3D11Device *device, HWND hwnd)
 {
 	bool result;
-	ModelClass *firstModel = new ModelClass();
-	result = firstModel->Initialize(device, "../Kollisionserkennung DirectX/data/dreiecke.txt", hwnd);
+	ModelClass *curModel = new ModelClass(); // braucht am Ende nicht deleted zu werden weil m_Objects die Referenz hält
+	result = curModel->Initialize(device, "../Kollisionserkennung DirectX/data/Objekt_1.txt", hwnd);
 	if (!result)
 	{
 		MessageBox(hwnd, L"Could not initialize the first object.", L"Error", MB_OK);
 		return false;
 	}
-	m_Objects.push_back(firstModel);
+	m_Objects.push_back(curModel);
+
+	curModel = new ModelClass();
+	result = curModel->Initialize(device, "../Kollisionserkennung DirectX/data/Objekt_2.txt", hwnd);
+	if (!result)
+	{
+		MessageBox(hwnd, L"Could not initialize the first object.", L"Error", MB_OK);
+		return false;
+	}
+	m_Objects.push_back(curModel);
 
 	return true;
 }
