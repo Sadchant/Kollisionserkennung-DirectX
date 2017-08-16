@@ -9,20 +9,32 @@ CollisionDetectionManager::CollisionDetectionManager()
 	m_Vertices = 0;
 	m_Triangles = 0;
 	m_ObjectsLastIndices = 0;
-	m_BoundingBoxes = 0;
-	m_ComputeShader = 0;
+	m_Results1 = 0;
+	m_Results2 = 0;
+	m_curComputeShader = 0;
 
 	m_Vertex_Buffer = 0;
 	m_Triangle_Buffer = 0;
 	m_ObjectsLastIndices_Buffer = 0;
 	m_BoundingBox_Buffer = 0;
-	m_Result_Buffer = 0;
+	m_CounterTrees_Buffer = 0;
+	m_GroupMinPoint_Buffer = 0;
+	m_GroupMaxPoint_Buffer = 0;
+	m_ReduceData_CBuffer = 0;
+	m_Result_Buffer1 = 0;
+	m_Result_Buffer2 = 0;
+
+	m_NULL_SRV = NULL;
+	m_NULL_UAV = NULL;
 
 	m_Vertex_SRV = 0;
 	m_Triangle_SRV = 0;
 	m_ObjectsLastIndices_SRV = 0;
 
 	m_BoundingBox_UAV = 0;
+	m_GroupMinPoint_UAV = 0;
+	m_GroupMaxPoint_UAV = 0;
+	m_CounterTrees_UAV = 0;
 }
 
 
@@ -30,11 +42,34 @@ CollisionDetectionManager::~CollisionDetectionManager()
 {
 }
 
-void CollisionDetectionManager::Initialize(ID3D11Device* device, ID3D11DeviceContext* deviceContext, HWND hwnd)
+void CollisionDetectionManager::Initialize(ID3D11Device* device, ID3D11DeviceContext* deviceContext, HWND hwnd, vector<ModelClass*>* objects)
 {
 	this->device = device;
 	this->deviceContext = deviceContext;
-	CreateComputeShader(hwnd, L"../Kollisionserkennung DirectX/1_BoundingBox_ComputeShader.hlsl");
+
+	m_TreeSize = 0;
+	// Berechne aus LEVELS die TreeSize (es wird die Anzahl der Zellen pro Level zusammengerechnet)
+	for (int i = 0; i <= LEVELS; i++)
+	{
+		m_TreeSize += (int)pow(8, i); // es gibt pro Level 8 hoch aktuelles Level Unterteilungen
+	}
+
+	m_ReduceData_CBuffer = CreateConstantBuffer(sizeof(ReduceData), D3D11_USAGE_DEFAULT);
+	m_hwnd = hwnd;
+	InitComputeShaderVector();
+
+	CreateVertexAndTriangleArray(objects);
+	CreateSceneBuffersAndViews();
+}
+
+// befülle m_ComputeShaderVector mit allen Compute Shadern
+void CollisionDetectionManager::InitComputeShaderVector()
+{
+	ID3D11ComputeShader* pTempComputeShader;
+	pTempComputeShader = CreateComputeShader(L"../Kollisionserkennung DirectX/1_BoundingBoxes_CS.hlsl");
+	m_ComputeShaderVector.push_back(pTempComputeShader);
+	pTempComputeShader = CreateComputeShader(L"../Kollisionserkennung DirectX/2_SceneBoundingBox_CS.hlsl");
+	m_ComputeShaderVector.push_back(pTempComputeShader);
 }
 
 // kopiert Punkte und Dreiecke aller Objekte in objects in große Buffer zusammen, in LastObjectIndices wird sich gemerkt, welche Dreiecke
@@ -54,12 +89,12 @@ void CollisionDetectionManager::CreateVertexAndTriangleArray(vector<ModelClass*>
 	// vor dem neuen Speicher allokieren den alten freiegeben
 	SAFEDELETEARRAY(m_Vertices);
 	SAFEDELETEARRAY(m_Triangles);
-	SAFEDELETEARRAY(m_BoundingBoxes);
+	SAFEDELETEARRAY(m_ObjectsLastIndices);
 
 	m_Vertices = new Vertex[m_VertexCount];
 	m_Triangles = new Triangle[m_TriangleCount];
 	m_ObjectsLastIndices = new int[objects->size()]; // es gibt so viele Einträge wie Objekte
-	m_BoundingBoxes = new BoundingBox[m_TriangleCount]; // eine Bounding Box pro Dreieck
+	
 
 	int curGlobalPosition = 0;
 	int curLastIndex = 0;
@@ -85,35 +120,88 @@ void CollisionDetectionManager::CreateVertexAndTriangleArray(vector<ModelClass*>
 	}
 }
 
+// erzeugt alle Buffer, die bei Hinzufügen/Löschen von Objekten in der Szene ihre Größe ändern
+void CollisionDetectionManager::CreateSceneBuffersAndViews()
+{
+	D3D11_SUBRESOURCE_DATA vertex_SubresourceData = D3D11_SUBRESOURCE_DATA{ m_Vertices, 0, 0 };
+	D3D11_SUBRESOURCE_DATA triangle_SubresourceData = D3D11_SUBRESOURCE_DATA{ m_Triangles, 0, 0 };
+	D3D11_SUBRESOURCE_DATA objectLastIndices_SubresourceData = D3D11_SUBRESOURCE_DATA{ m_ObjectsLastIndices, 0, 0 };
+
+	// Buffer, ShaderResourceViews und UnorderedAccessViews müssen released werden (falls etwas in ihnen ist), bevor sie neu created werden!
+	ReleaseBuffersAndViews();
+
+	m_Vertex_Buffer = CreateStructuredBuffer(m_VertexCount, sizeof(Vertex), D3D11_BIND_SHADER_RESOURCE, D3D11_USAGE_IMMUTABLE, 0, &vertex_SubresourceData);
+	m_Triangle_Buffer = CreateStructuredBuffer(m_TriangleCount, sizeof(Triangle), D3D11_BIND_SHADER_RESOURCE, D3D11_USAGE_IMMUTABLE, 0, &triangle_SubresourceData);
+	m_ObjectsLastIndices_Buffer = CreateStructuredBuffer(m_ObjectCount, sizeof(UINT), D3D11_BIND_SHADER_RESOURCE, D3D11_USAGE_IMMUTABLE, 0, &objectLastIndices_SubresourceData);
+	m_BoundingBox_Buffer = CreateStructuredBuffer(m_TriangleCount, sizeof(BoundingBox), D3D11_BIND_UNORDERED_ACCESS, D3D11_USAGE_DEFAULT, 0, NULL);
+	m_CounterTrees_Buffer = CreateStructuredBuffer(m_ObjectCount*m_TreeSize, sizeof(UINT), D3D11_BIND_UNORDERED_ACCESS, D3D11_USAGE_DEFAULT, 0, NULL);
+	// BoundingBox_Buffer und Result_Buffer werd ja im Shader befüllt, müssen also nicht mit Daten initialisiert werdenS
+	
+	int groupResult_Count = (int)ceil((float)m_VertexCount / (2 * B_SCENEBOUNDINGBOX_XTHREADS));
+	m_GroupMinPoint_Buffer = CreateStructuredBuffer(groupResult_Count, sizeof(Vertex), D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS, D3D11_USAGE_DEFAULT, 0, NULL);
+	m_GroupMaxPoint_Buffer = CreateStructuredBuffer(groupResult_Count, sizeof(Vertex), D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS, D3D11_USAGE_DEFAULT, 0, NULL);
+
+	
+	
+	m_Vertex_SRV = CreateBufferShaderResourceView(m_Vertex_Buffer, m_VertexCount);
+	m_Triangle_SRV = CreateBufferShaderResourceView(m_Triangle_Buffer, m_TriangleCount);
+	m_ObjectsLastIndices_SRV = CreateBufferShaderResourceView(m_ObjectsLastIndices_Buffer, m_ObjectCount);
+
+	m_BoundingBox_UAV = CreateBufferUnorderedAccessView(m_BoundingBox_Buffer, m_TriangleCount);
+
+	m_GroupMinPoint_UAV = CreateBufferUnorderedAccessView(m_GroupMinPoint_Buffer, groupResult_Count);
+	m_GroupMaxPoint_UAV = CreateBufferUnorderedAccessView(m_GroupMaxPoint_Buffer, groupResult_Count);
+}
+
 // gib alle Buffer, Shader Resource Views und Unordered Access Views frei
 void CollisionDetectionManager::ReleaseBuffersAndViews()
 {
 	SAFERELEASE(m_Vertex_Buffer);
 	SAFERELEASE(m_Triangle_Buffer);
 	SAFERELEASE(m_ObjectsLastIndices_Buffer);
-	SAFERELEASE(m_BoundingBox_Buffer);
-	SAFERELEASE(m_Result_Buffer);
+	SAFERELEASE(m_BoundingBox_Buffer);	
+	SAFERELEASE(m_GroupMinPoint_Buffer);
+	SAFERELEASE(m_GroupMaxPoint_Buffer);
+	SAFERELEASE(m_CounterTrees_Buffer);
+	// Constant Buffer wird nur einmal erzeugt (weil sich seine Größe nicht ändert), also nur in Shutdown released!
+	SAFERELEASE(m_Result_Buffer1);
+	SAFERELEASE(m_Result_Buffer2);
 
 	SAFERELEASE(m_Vertex_SRV);
 	SAFERELEASE(m_Triangle_SRV);
 	SAFERELEASE(m_ObjectsLastIndices_SRV);
+	/*SAFERELEASE(m_GroupMinPoint_SRV);
+	SAFERELEASE(m_GroupMaxPoint_SRV);*/
 
 	SAFERELEASE(m_BoundingBox_UAV);
+	/*SAFERELEASE(m_MinWork_UAV);
+	SAFERELEASE(m_MaxWork_UAV);*/
+	SAFERELEASE(m_GroupMinPoint_UAV);
+	SAFERELEASE(m_GroupMaxPoint_UAV);
 }
 
 void CollisionDetectionManager::Shutdown()
 {
-	SAFERELEASE(m_ComputeShader);
-
 	SAFEDELETEARRAY(m_Vertices);
 	SAFEDELETEARRAY(m_Triangles);
 	SAFEDELETEARRAY(m_ObjectsLastIndices);
-	SAFEDELETEARRAY(m_BoundingBoxes);
+	SAFEDELETEARRAY(m_Results1);
+
+	SAFERELEASE(m_ReduceData_CBuffer);
 
 	ReleaseBuffersAndViews();
+
+	// den Vector mit den Compute Shadern durchlaufen, alle releasen und danach den Vector leeren
+	for (ID3D11ComputeShader* pCurComputeShader: m_ComputeShaderVector)
+	{
+		pCurComputeShader->Release();
+	}
+	m_ComputeShaderVector.clear();
 }
 
-bool CollisionDetectionManager::CreateComputeShader(HWND hwnd, WCHAR* csFilename)
+
+
+ID3D11ComputeShader* CollisionDetectionManager::CreateComputeShader(WCHAR* csFilename)
 {
 	HRESULT result;
 	ID3D10Blob* errorMessage; // wird benutzt um beliebige "Length-Data" zurückzugeben
@@ -137,43 +225,44 @@ bool CollisionDetectionManager::CreateComputeShader(HWND hwnd, WCHAR* csFilename
 	// inside the errorMessage string which we send to another function to write out the error.If it still fails and there is no errorMessage
 	// string then it means it could not find the shader file in which case we pop up a dialog box saying so.
 
-	// Compile the compute shader code, "ColorVertexShader": Name der Methode im Shader, die aufgerufen wird
-	result = D3DCompileFromFile(csFilename, NULL, NULL, "main", "cs_5_0", D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION, 0,
-		&computeShaderBuffer, &errorMessage);
+	// Compile the compute shader code, D3D_COMPILE_STANDARD_FILE_INCLUDE bewirkt, dass man "#include" in hlsl benutzen kann
+	result = D3DCompileFromFile(csFilename, NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", "cs_5_0", D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION,
+		0, &computeShaderBuffer, &errorMessage);
 	if (FAILED(result))
 	{
 		// If the shader failed to compile it should have writen something to the error message.
 		if (errorMessage)
 		{
-			OutputShaderErrorMessage(errorMessage, hwnd, csFilename);
+			OutputShaderErrorMessage(errorMessage, m_hwnd, csFilename);
 		}
 		// If there was  nothing in the error message then it simply could not find the shader file itself.
 		else
 		{
-			MessageBox(hwnd, csFilename, L"Missing Shader File", MB_OK);
+			MessageBox(m_hwnd, csFilename, L"Missing Shader File", MB_OK);
 		}
 
-		return false;
+		return NULL;
 	}
 
+	ID3D11ComputeShader* pComputeShader;
 
 	// Once the compute shader and code has successfully compiled into a buffer we then use this buffer to create the shader object
 	// itself. We will use this pointer to interface with the compute shader from this point forward.
 
 	// Create the compute shader from the buffer.
 	// Shader-Objekt wird in den m_computeShader gefüllt
-	result = device->CreateComputeShader(computeShaderBuffer->GetBufferPointer(), computeShaderBuffer->GetBufferSize(), NULL, &m_ComputeShader);
+	result = device->CreateComputeShader(computeShaderBuffer->GetBufferPointer(), computeShaderBuffer->GetBufferSize(), NULL, &pComputeShader);
 	if (FAILED(result))
 	{
-		return false;
+		cout << "CreateComputeShader() Fehler!" << endl;
 	}
 
 
-	// Release the vertex shader buffer and pixel shader buffer since they are no longer needed.
-	computeShaderBuffer->Release();
-	computeShaderBuffer = 0;
+	// Release error message and shader buffer
+	SAFERELEASE(errorMessage);
+	SAFERELEASE(computeShaderBuffer);
 
-	return true;
+	return pComputeShader;
 }
 
 // Buffererzeugung ist dadurch, dass man erst einen D3D11_BUFFER_DESC braucht etwas lang, deswegen in FUnktion gekapselt
@@ -191,6 +280,22 @@ ID3D11Buffer* CollisionDetectionManager::CreateStructuredBuffer(UINT count, UINT
 	// Create the buffer with the specified configuration
 	ID3D11Buffer* pBuffer = 0;
 	HRESULT hr = device->CreateBuffer(&desc, pData, &pBuffer);
+	return pBuffer;
+}
+
+ID3D11Buffer* CollisionDetectionManager::CreateConstantBuffer(UINT elementSize, D3D11_USAGE usage)
+{
+	D3D11_BUFFER_DESC constant_buffer_desc;
+	ZeroMemory(&constant_buffer_desc, sizeof(constant_buffer_desc));
+	constant_buffer_desc.ByteWidth = elementSize;
+	constant_buffer_desc.Usage = usage;
+	constant_buffer_desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+	constant_buffer_desc.CPUAccessFlags = 0;
+
+	ID3D11Buffer* pBuffer = 0;
+	HRESULT hr = device->CreateBuffer(&constant_buffer_desc, nullptr, &pBuffer);
+	if (FAILED(hr))
+		cout << "Fehler beim Erzeugen von Constant Buffer" << endl;
 	return pBuffer;
 }
 
@@ -274,35 +379,22 @@ void CollisionDetectionManager::OutputShaderErrorMessage(ID3D10Blob* errorMessag
 	errorMessage = 0;
 
 	// Pop a message up on the screen to notify the user to check the text file for compile errors.
-	MessageBox(hwnd, L"Error compiling shader.  Check console output.txt for message.", shaderFilename, MB_OK);
+	MessageBox(hwnd, L"Error compiling shader.  Check console output for message.", shaderFilename, MB_OK);
 
 	return;
 }
 
 // führe die Kollisionsberechnung für das aktuelle Frame durch
-bool CollisionDetectionManager::Frame(vector<ModelClass*>* objects)
+bool CollisionDetectionManager::Frame()
 {
 	auto begin = high_resolution_clock::now();
-	CreateVertexAndTriangleArray(objects);
-	D3D11_SUBRESOURCE_DATA vertex_SubresourceData = D3D11_SUBRESOURCE_DATA { m_Vertices, 0, 0 };
-	D3D11_SUBRESOURCE_DATA triangle_SubresourceData = D3D11_SUBRESOURCE_DATA{ m_Triangles, 0, 0 };
-	D3D11_SUBRESOURCE_DATA objectLastIndices_SubresourceData = D3D11_SUBRESOURCE_DATA{ m_ObjectsLastIndices, 0, 0 };
+	// ####### Berechne Bounding Boxes für jedes Dreieck #######
+	
+	auto end = high_resolution_clock::now();
+	//cout << "Buffer created" << ": " << duration_cast<milliseconds>(end - begin).count() << "ms" << endl;
+	begin = high_resolution_clock::now();
 
-	// Buffer, ShaderResourceViews und UnorderedAccessViews müssen released werden (falls etwas in ihnen ist), bevor sie neu created werden!
-	ReleaseBuffersAndViews();
-
-	m_Vertex_Buffer = CreateStructuredBuffer(m_VertexCount, sizeof(Vertex), D3D11_BIND_SHADER_RESOURCE, D3D11_USAGE_IMMUTABLE, 0, &vertex_SubresourceData);
-	m_Triangle_Buffer = CreateStructuredBuffer(m_TriangleCount, sizeof(Triangle), D3D11_BIND_SHADER_RESOURCE, D3D11_USAGE_IMMUTABLE, 0, &triangle_SubresourceData);
-	m_ObjectsLastIndices_Buffer = CreateStructuredBuffer(m_ObjectCount, sizeof(UINT), D3D11_BIND_SHADER_RESOURCE, D3D11_USAGE_IMMUTABLE, 0, &objectLastIndices_SubresourceData);
-	m_BoundingBox_Buffer = CreateStructuredBuffer(m_TriangleCount, sizeof(BoundingBox), D3D11_BIND_UNORDERED_ACCESS, D3D11_USAGE_DEFAULT, 0, NULL); 
-	m_Result_Buffer = CreateStructuredBuffer(m_TriangleCount, sizeof(BoundingBox), 0, D3D11_USAGE_STAGING, D3D11_CPU_ACCESS_READ, NULL);
-	// BoundingBox_Buffer und Result_Buffer werd ja im Shader befüllt, müssen also nicht mit Daten initialisiert werden
-
-	m_Vertex_SRV = CreateBufferShaderResourceView(m_Vertex_Buffer, m_VertexCount);
-	m_Triangle_SRV = CreateBufferShaderResourceView(m_Triangle_Buffer, m_TriangleCount);
-	m_ObjectsLastIndices_SRV = CreateBufferShaderResourceView(m_ObjectsLastIndices_Buffer, m_ObjectCount);
-
-	m_BoundingBox_UAV = CreateBufferUnorderedAccessView(m_BoundingBox_Buffer, m_TriangleCount);
+	
 	
 
 	int xThreadGroups = (int)ceil(m_TriangleCount / 1024.0f);
@@ -312,28 +404,95 @@ bool CollisionDetectionManager::Frame(vector<ModelClass*>* objects)
 
 	deviceContext->CSSetUnorderedAccessViews(0, 1, &m_BoundingBox_UAV, 0);
 
-	deviceContext->CSSetShader(m_ComputeShader, NULL, 0);
+	m_curComputeShader = m_ComputeShaderVector[0];
+	deviceContext->CSSetShader(m_curComputeShader, NULL, 0);
 	deviceContext->Dispatch(xThreadGroups, 1, 1);
 
-	auto end = high_resolution_clock::now(); 
-	// cout << "Buffer erzeugt, Dispatch erfolgt" << ": " << duration_cast<milliseconds>(end - begin).count() << "ms" << endl;
 
-	begin = high_resolution_clock::now();
 
-	// Daten von der GPU kopieren
-	D3D11_MAPPED_SUBRESOURCE MappedResource = { 0 };
-	deviceContext->CopyResource(m_Result_Buffer, m_BoundingBox_Buffer);
-	HRESULT result = deviceContext->Map(m_Result_Buffer, 0, D3D11_MAP_READ, 0, &MappedResource);
+	// ####### Berechne Bounding Box für die gesamte Szene #######
+	m_curComputeShader = m_ComputeShaderVector[1];
+	deviceContext->CSSetShader(m_curComputeShader, NULL, 0);
+
+	
+	/*m_MinWork_Buffer = CreateStructuredBuffer(m_VertexCount, sizeof(Vertex), D3D11_BIND_UNORDERED_ACCESS, D3D11_USAGE_DEFAULT, 0, NULL);
+	m_MaxWork_Buffer = CreateStructuredBuffer(m_VertexCount, sizeof(Vertex), D3D11_BIND_UNORDERED_ACCESS, D3D11_USAGE_DEFAULT, 0, NULL);*/
+	
+
+
+	deviceContext->CSSetShaderResources(0, 1, &m_Vertex_SRV);
+	deviceContext->CSSetShaderResources(1, 1, &m_Vertex_SRV);
+	// GroupMinMaxPoint: Output im ersten Durchgang, Input und Output in allen anderen
+	deviceContext->CSSetUnorderedAccessViews(0, 1, &m_GroupMinPoint_UAV, 0);
+	deviceContext->CSSetUnorderedAccessViews(1, 1, &m_GroupMaxPoint_UAV, 0);
+
+	int threadCount, groupCount, firstStepStride, inputSize;
+	bool firstStep = true;
+	bool outputIsInput = false; // teilt den Shader mit, dass er nicht mehr aus Vertices liest und stattdessen den Output als Input benutzen soll
+
+	// Hier die einzigartige und selten gesehene do-while-Schleife:
+	do
+	{
+		// im allerersten Durchlauf werden die Vertices als Input für die Berechnungen der Szenen-BoundingBox benutzt
+		// der ThreadCount (wie viele Threads werden praktisch benötigt?) berechnet sich aus vertexCount
+		if (firstStep)
+		{			
+			threadCount = (int)ceil(m_VertexCount / 2.0);
+			inputSize = m_VertexCount;
+			firstStep = false;
+		}
+		// ansonsten wird als Input das Ergebnis des letzten Schleifen-Durchlaufs in den groupMin/MaxPoint_Buffern benutzt
+		// der ThreadCount berechnet sich aus der Anzahl der Gruppen im letzten Schleifen-Durchlauf
+		else
+		{			
+			threadCount = (int)ceil(groupCount/2.0);
+			inputSize = groupCount; // ab dem zweiten Durchlauf werden ja gruppenErgebnisse weiterverarbeitet, also entspricht die InputSize dem letzten groupCount
+			outputIsInput = true; // alle außer dem ersten Durchlauf dürfen den Input manipulieren
+		}		
+		groupCount = (int)ceil((float)threadCount / B_SCENEBOUNDINGBOX_XTHREADS);
+		firstStepStride = groupCount * B_SCENEBOUNDINGBOX_XTHREADS;
+		// Struct für den Constant Buffer
+		ReduceData reduceData = { firstStepStride, inputSize, outputIsInput };
+		deviceContext->UpdateSubresource(m_ReduceData_CBuffer, 0, NULL, &reduceData, 0, 0);
+		deviceContext->CSSetConstantBuffers(0, 1, &m_ReduceData_CBuffer);
+		deviceContext->Dispatch(groupCount, 1, 1);
+	} while (groupCount > 1);
+	// solange mehr als eine Gruppe gestartet werden muss, werden die Min-MaxPoints nicht auf ein Ergebnis reduziert sein,
+	// da es ja immer ein Ergebnis pro Gruppe berechnet wird
+
+	// ####### Daten von der GPU kopieren #######
+	SAFEDELETEARRAY(m_Results1);
+	SAFEDELETEARRAY(m_Results2);
+	
+	m_Results1 = new Vertex[groupResult_Count];
+	m_Results2 = new Vertex[groupResult_Count];
+
+	m_Result_Buffer1 = CreateStructuredBuffer(groupResult_Count, sizeof(Vertex), 0, D3D11_USAGE_STAGING, D3D11_CPU_ACCESS_READ, NULL);
+	m_Result_Buffer2 = CreateStructuredBuffer(groupResult_Count, sizeof(Vertex), 0, D3D11_USAGE_STAGING, D3D11_CPU_ACCESS_READ, NULL);
+
+
+	D3D11_MAPPED_SUBRESOURCE MappedResource1 = { 0 };
+	D3D11_MAPPED_SUBRESOURCE MappedResource2 = { 0 };
+	deviceContext->CopyResource(m_Result_Buffer1, m_GroupMinPoint_Buffer);
+	deviceContext->CopyResource(m_Result_Buffer2, m_GroupMaxPoint_Buffer);
+	HRESULT result = deviceContext->Map(m_Result_Buffer1, 0, D3D11_MAP_READ, 0, &MappedResource1);
+	result = deviceContext->Map(m_Result_Buffer2, 0, D3D11_MAP_READ, 0, &MappedResource2);
+
 	RETURN_FALSE_IF_FAIL(result);
 
-	_Analysis_assume_(MappedResource.pData);
-	assert(MappedResource.pData);
+	_Analysis_assume_(MappedResource1.pData);
+	assert(MappedResource1.pData);
+
+	_Analysis_assume_(MappedResource2.pData);
+	assert(MappedResource2.pData);
 	// m_BoundingBoxes wird in CreateVertexAndTriangleArray neu initialisiert
-	memcpy(m_BoundingBoxes, MappedResource.pData, m_TriangleCount * sizeof(BoundingBox));
-	deviceContext->Unmap(m_Result_Buffer, 0);
+	memcpy(m_Results1, MappedResource1.pData, groupResult_Count * sizeof(Vertex));
+	memcpy(m_Results2, MappedResource2.pData, groupResult_Count * sizeof(Vertex));
+	deviceContext->Unmap(m_Result_Buffer1, 0);
+	deviceContext->Unmap(m_Result_Buffer2, 0);
 
 	end = high_resolution_clock::now();
-	// cout << "Buffer erzeugt, Dispatch erfolgt" << ": " << duration_cast<milliseconds>(end - begin).count() << "ms" << endl;
+	//cout << "GPU Work" << ": " << duration_cast<milliseconds>(end - begin).count() << "ms" << endl;
 	
 	return true;
 }

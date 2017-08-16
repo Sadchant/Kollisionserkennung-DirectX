@@ -56,7 +56,10 @@ bool Scene::Initialize(int screenWidth, int screenHeight, HWND hwnd)
 	m_Camera->GetViewMatrix(baseViewMatrix);
 
 	// Initialize the model object.
-	result = LoadObjects(m_Direct3D->GetDevice(), hwnd);
+	if (LARGESCENE)
+		result = LoadBigObjects(m_Direct3D->GetDevice(), hwnd);
+	else
+		result = LoadSmallObjects(m_Direct3D->GetDevice(), hwnd);
 
 	if (!result)
 	{
@@ -140,7 +143,7 @@ bool Scene::Initialize(int screenWidth, int screenHeight, HWND hwnd)
 
 
 	m_CollisionDetectionManager = new CollisionDetectionManager();
-	m_CollisionDetectionManager->Initialize(m_Direct3D->GetDevice(), m_Direct3D->GetDeviceContext(), hwnd);
+	m_CollisionDetectionManager->Initialize(m_Direct3D->GetDevice(), m_Direct3D->GetDeviceContext(), hwnd, &m_Objects);
 
 	return true;
 }
@@ -326,12 +329,12 @@ bool Scene::Render(float rotation)
 	// Present the rendered scene to the screen.
 	m_Direct3D->EndScene();
 
-	m_CollisionDetectionManager->Frame(&m_Objects);
+	m_CollisionDetectionManager->Frame();
 
 	return true;
 }
 
-bool Scene::LoadObjects(ID3D11Device *device, HWND hwnd)
+bool Scene::LoadSmallObjects(ID3D11Device *device, HWND hwnd)
 {
 	bool result;
 	ModelClass *curModel = new ModelClass(); // braucht am Ende nicht deleted zu werden weil m_Objects die Referenz hält
@@ -351,6 +354,24 @@ bool Scene::LoadObjects(ID3D11Device *device, HWND hwnd)
 		return false;
 	}
 	m_Objects.push_back(curModel);
+
+	return true;
+}
+
+bool Scene::LoadBigObjects(ID3D11Device *device, HWND hwnd)
+{
+	bool result;
+	ModelClass *curModel = new ModelClass(); // braucht am Ende nicht deleted zu werden weil m_Objects die Referenz hält
+	result = curModel->Initialize(device, "../Kollisionserkennung DirectX/data/Kran.txt", hwnd);
+	if (!result)
+	{
+		MessageBox(hwnd, L"Could not initialize the first object.", L"Error", MB_OK);
+	}
+
+	for (int i = 0; i < 1; i++)
+	{
+		m_Objects.push_back(curModel);
+	}
 
 	return true;
 }

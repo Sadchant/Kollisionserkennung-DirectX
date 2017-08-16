@@ -309,6 +309,7 @@ void ModelClass::ReleaseTexture()
 // After reading the vertex count it creates the ModelType array and then reads each line into the array.Both the vertex count and index count are now set in this function.
 bool ModelClass::LoadModel(char* filename)
 {
+	cout << "Lade Objekt..." << endl;
 	ifstream fin;
 	char input;
 	int i;
@@ -352,13 +353,33 @@ bool ModelClass::LoadModel(char* filename)
 	fin.get(input);
 	fin.get(input);
 
+
 	// Read in the vertex data.
 	for (i = 0; i<m_vertexCount; i++)
 	{
 		fin >> m_model[i].x >> m_model[i].y >> m_model[i].z;
 		fin >> m_model[i].tu >> m_model[i].tv;
 		fin >> m_model[i].nx >> m_model[i].ny >> m_model[i].nz;
+		if (i == (m_vertexCount / 10))
+			cout << "Verarbeitung 10% abgeschlossen..." << endl;
+		else if (i == ((m_vertexCount / 10) * 2))
+			cout << "Verarbeitung 20% abgeschlossen..." << endl;
+		else if (i == ((m_vertexCount / 10) * 3))
+			cout << "Verarbeitung 30% abgeschlossen..." << endl;
+		else if (i == (m_vertexCount / 10) * 4)
+			cout << "Verarbeitung 40% abgeschlossen..." << endl;
+		else if (i == (m_vertexCount / 10) * 5)
+			cout << "Verarbeitung 50% abgeschlossen..." << endl;
+		else if (i == (m_vertexCount / 10) * 6)
+			cout << "Verarbeitung 60% abgeschlossen..." << endl;
+		else if (i == (m_vertexCount / 10) * 7)
+			cout << "Verarbeitung 70% abgeschlossen..." << endl;
+		else if (i == (m_vertexCount / 10) * 8)
+			cout << "Verarbeitung 80% abgeschlossen..." << endl;
+		else if (i == (m_vertexCount / 10) * 9)
+			cout << "Verarbeitung 90% abgeschlossen..." << endl;
 	}
+	cout << "Verarbeitung 100% abgeschlossen...";
 
 	// Close the model file.
 	fin.close();

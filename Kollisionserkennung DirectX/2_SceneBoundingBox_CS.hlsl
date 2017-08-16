@@ -1,0 +1,143 @@
+#include "HlslSharedDefines.h"
+#include "0_ComputeShaderGlobals.hlsl"
+
+StructuredBuffer<float3> minInput : register(t0);
+StructuredBuffer<float3> maxInput : register(t1);
+
+// RWStructuredBuffer<float3> minWork : register(u0);
+// RWStructuredBuffer<float3> maxWork : register(u1);
+RWStructuredBuffer<float3> minOutput : register(u0);
+RWStructuredBuffer<float3> maxOutput : register(u1);
+
+// groupshared, also greife nur mit groupLocalID darauf zu, sonst könnte man aus dem Speicher laufen!
+groupshared float3 minTemp[B_SCENEBOUNDINGBOX_XTHREADS];
+groupshared float3 maxTemp[B_SCENEBOUNDINGBOX_XTHREADS];
+
+cbuffer reduceData
+{
+    int firstStepStride;
+    int inputSize;
+    int bool_OutputIsInput;
+}
+
+
+[numthreads(B_SCENEBOUNDINGBOX_XTHREADS, B_SCENEBOUNDINGBOX_YTHREADS, B_SCENEBOUNDINGBOX_ZTHREADS)]
+void main(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadID, uint3 Gid : SV_GroupID)
+{
+    float a = 0.0f;
+    float b = 0.0f;
+    float c = 0.0f;
+    float d = 0.0f;
+    float e = 0.0f;
+    float f = 0.0f;
+    float3 result;
+
+    uint id = DTid.x;
+    uint groupLocalID = GTid.x;
+    uint groupID = Gid.x;
+
+    // für die IDs, die im ersten Schritt keinen Counterpart auf der inaktiven Seite haben
+    if ((id + firstStepStride) > inputSize)
+    {
+        if (!bool_OutputIsInput)
+        {
+            minTemp[groupLocalID] = minInput[id];
+            maxTemp[groupLocalID] = maxInput[id];
+        }
+        else // wenn Output der Input ist, lese vom Output :)
+        {
+            minTemp[groupLocalID] = minOutput[id];
+            maxTemp[groupLocalID] = maxOutput[id];
+        }
+    }
+
+    // im ersten Schritt die eine Hälfte der Daten aus Input mit der anderen Hälfte vergleichen
+    // firStstepStride ist ~inputsize/2
+    // das Ergebnis steht danach in min/maxTemp, also ab jetzt min/maxTemp weiterverarbeiten
+    if (!bool_OutputIsInput)
+    {
+        minTemp[groupLocalID].x = min(minInput[id].x, minInput[id + firstStepStride].x);
+        minTemp[groupLocalID].y = min(minInput[id].y, minInput[id + firstStepStride].y);
+        minTemp[groupLocalID].z = min(minInput[id].z, minInput[id + firstStepStride].z);
+
+        maxTemp[groupLocalID].x = max(maxInput[id].x, maxInput[id + firstStepStride].x);
+        maxTemp[groupLocalID].y = max(maxInput[id].y, maxInput[id + firstStepStride].y);
+        maxTemp[groupLocalID].z = max(maxInput[id].z, maxInput[id + firstStepStride].z);
+        c = minTemp[groupLocalID].x;
+    }
+    else // wenn Output der Input ist, lese vom Output :)
+    {
+        minTemp[groupLocalID].x = min(minOutput[id].x, minOutput[id + firstStepStride].x);
+        minTemp[groupLocalID].y = min(minOutput[id].y, minOutput[id + firstStepStride].y);
+        minTemp[groupLocalID].z = min(minOutput[id].z, minOutput[id + firstStepStride].z);
+
+        maxTemp[groupLocalID].x = max(maxOutput[id].x, maxOutput[id + firstStepStride].x);
+        maxTemp[groupLocalID].y = max(maxOutput[id].y, maxOutput[id + firstStepStride].y);
+        maxTemp[groupLocalID].z = max(maxOutput[id].z, maxOutput[id + firstStepStride].z);
+    }
+    // stelle sicher dass alle Threads der Gruppe mit dem ersten Schritt fertig sind
+    GroupMemoryBarrierWithGroupSync();
+
+    // der Rest der Daten wird iterativ weiterverarbeitet, bis die aktuelle Gruppe ihren Bereich reduziert hat
+    for (uint i = B_SCENEBOUNDINGBOX_XTHREADS / 2; i > 0; i /= 2)
+    {
+        // die Threads, die im Teil der inaktiven Daten liegen, bekommen nie wieder etwas zu tun in diesem Dispatch und können returnen
+        if (groupLocalID > i)
+        {
+            // der Compiler kann kein return in einer for-schleife, wenn sie AllMemoryBarrierWithGroupSync beinhaltet, 
+            // sonst kommt "thread sync operation found in varying flow control", also leeres if-else
+        }
+        // beim letzten Durchlauf insgesamt, wenn es nur noch einen Block gibt, kann es sein dass man wieder über die Daten hinausgeht mit id + i, deswegen:
+        else if (id + i > inputSize)
+        {
+            if (!bool_OutputIsInput)
+            {
+                minTemp[groupLocalID] = minInput[id];
+                maxTemp[groupLocalID] = maxInput[id];
+            }
+            else // wenn Output der Input ist, lese vom Output :)
+            {
+                minTemp[groupLocalID] = minOutput[id];
+                maxTemp[groupLocalID] = maxOutput[id];
+            }
+        }
+        else
+        {
+            // führe die Reduktion durch, die StepStride ist in der for-Schleife i
+            minTemp[groupLocalID].x = min(minTemp[groupLocalID].x, minTemp[groupLocalID + i].x);
+            minTemp[groupLocalID].y = min(minTemp[groupLocalID].y, minTemp[groupLocalID + i].y);
+            minTemp[groupLocalID].z = min(minTemp[groupLocalID].z, minTemp[groupLocalID + i].z);
+
+            maxTemp[groupLocalID].x = max(maxTemp[groupLocalID].x, maxTemp[groupLocalID + i].x);
+            maxTemp[groupLocalID].y = max(maxTemp[groupLocalID].y, maxTemp[groupLocalID + i].y);
+            maxTemp[groupLocalID].z = max(maxTemp[groupLocalID].z, maxTemp[groupLocalID + i].z);
+        }
+        // Blockiere, bis alle Threads dieser Gruppe die Speicherzugriffe dieses Schleifendurchlaufs durchgeführt haben
+        // wir müssen nicht auf AllMemory, da sämtliche Ergebnisse ja in groupshared Speicher min/maxTemp geschrieben werden
+        GroupMemoryBarrierWithGroupSync();
+    }
+    // der letzte Thread, der übrig bleibt hat die ID, die auf dem Ergebnis dieser Gruppe liegt
+    // kopiere das Ergebnis von Temp in Output, beachte, dass Output einen Eintrag pro Gruppe hat!
+    if (groupLocalID == 0) // kann zwar eh immer nur Thread 0 pro Gruppe sein, der hier ankommt, aber sonst motzt der Compiler wegen Race Conditions
+    {
+        minOutput[groupID] = minTemp[groupLocalID];
+        maxOutput[groupID] = maxTemp[groupLocalID];
+
+    }
+    //result = minOutput[groupID];
+    //_____
+    //float z = a + b + c + d+ e + f;
+    //minOutput[groupLocalID].x = z;
+    //minOutput[groupLocalID + 1] = result;
+    //_____
+
+    // wenn es die 1. gestartete Gruppe war, könnte es das Endergebnis sein (man weiß im Shader nicht wie viele Gruppen gestartet wurden)
+    // merke dir das Ergebnis schonmal in sceneBoundingBox, falls es nur eine Gruppe gab ist es das Endergebnis
+    //if (groupID == 0)
+    //{
+    //    float d = a + b + c;
+    //    int f = d / 2;
+    //    BoundingBox resultBoundingBox = { minOutput[f], maxOutput[0] - minOutput[0] }; // komischer Extraschritt weil sonst der COmpiler meckert
+    //    sceneBoundingBox = resultBoundingBox;
+    //}
+}

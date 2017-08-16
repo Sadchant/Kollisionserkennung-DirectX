@@ -95,9 +95,6 @@
     <ClInclude Include="Textureclass.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Textureshaderclass.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="resource.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -134,6 +131,12 @@
     <ClInclude Include="TimerClass.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="HlslSharedDefines.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Textureshaderclass.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
@@ -143,9 +146,11 @@
     <None Include="VertexShader.hlsl" />
     <None Include="LightPixelShader.hlsl" />
     <None Include="LightVertexShader.hlsl" />
-    <None Include="1_BoundingBox_ComputeShader.hlsl" />
     <None Include="FontVertexShader.hlsl" />
     <None Include="FontPixelShader.hlsl" />
+    <None Include="1_BoundingBoxes_CS.hlsl" />
+    <None Include="0_ComputeShaderGlobals.hlsl" />
+    <None Include="2_SceneBoundingBox_CS.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Kollisionserkennung DirectX.rc">

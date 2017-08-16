@@ -15,8 +15,10 @@
 
 using namespace std;
 
+const bool LARGESCENE = false;
+
 const bool FULL_SCREEN = false;
-const bool VSYNC_ENABLED = true;
+const bool VSYNC_ENABLED = false;
 const float SCREEN_DEPTH = 1000.0f;
 const float SCREEN_NEAR = 0.1f;
 
@@ -33,7 +35,8 @@ public:
 
 private:
 	bool Render(float);
-	bool LoadObjects(ID3D11Device* device, HWND hwnd);
+	bool LoadSmallObjects(ID3D11Device* device, HWND hwnd);
+	bool LoadBigObjects(ID3D11Device* device, HWND hwnd);
 
 private:
 	D3DClass* m_Direct3D;
