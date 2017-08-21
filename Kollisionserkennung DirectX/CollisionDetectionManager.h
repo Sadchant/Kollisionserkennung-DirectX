@@ -44,8 +44,8 @@ private:
 	};
 	struct BoundingBox
 	{
-		Vertex position;
-		Vector volumeVector;
+		Vertex minPoint;
+		Vector maxPoint;
 	};
 	__declspec(align(16)) // Structs in einem ConstantBuffer müpssen auf 16 Byte aligned sein
 	struct ReduceData 
@@ -54,10 +54,11 @@ private:
 		int inputSize;
 		int bool_OutputIsInput;
 	};
-
-	struct CounterTree 
+	__declspec(align(16)) // Structs in einem ConstantBuffer müpssen auf 16 Byte aligned sein
+	struct FillCounterTreesData
 	{
-		int triangleCount[];
+		int objectCount;
+		UINT treeSizeUntilLevel[LEVELS];
 	};
 
 	void InitComputeShaderVector();
@@ -66,7 +67,7 @@ private:
 	ID3D11ComputeShader* CreateComputeShader(WCHAR * csFilename);
 	void CreateVertexAndTriangleArray(vector<ModelClass*>* objects);
 	void ReleaseBuffersAndViews();
-	ID3D11Buffer* CreateConstantBuffer(UINT elementSize, D3D11_USAGE usage);
+	ID3D11Buffer* CreateConstantBuffer(UINT elementSize, D3D11_USAGE usage, D3D11_SUBRESOURCE_DATA *pData);
 	
 	ID3D11Device* device;
 	ID3D11DeviceContext* deviceContext;
@@ -75,12 +76,14 @@ private:
 	int m_VertexCount;
 	int m_TriangleCount;
 	int m_ObjectCount;
+	int m_GroupResult_Count; // wie groß ist das Ergebnis nach einem Reduce von Buffern der Größe m_VertexCount
 	int m_TreeSize;
 
 	Vertex* m_Vertices; // Array: beinhaltet alle Punkte, also dreimal so viele wie es indices gibt
 	Triangle* m_Triangles;
 	int* m_ObjectsLastIndices; // hält pro Objekt den letzten Index, der zu diesem Objekt gehört
-	
+	FillCounterTreesData m_FillCounterTreesData;
+
 	vector<ID3D11ComputeShader*> m_ComputeShaderVector;
 	ID3D11ComputeShader* m_curComputeShader; // wird immer mit dem gerade benötigten Compute Shader aus computeShaderVector befüllt
 
@@ -92,7 +95,9 @@ private:
 	
 	ID3D11Buffer* m_GroupMinPoint_Buffer; // Ergebnisbuffer einer Reduktion: beinhaltet nach einem Durchlauf die MinimalPunkte, die jede Gruppe berechnet hat
 	ID3D11Buffer* m_GroupMaxPoint_Buffer; // das selbe für die MaximalPunkte
+	
 	ID3D11Buffer* m_ReduceData_CBuffer; // ConstantBuffer, die den firstStepStride an den Shader weitergibt
+	ID3D11Buffer* m_FillCounterTreesData_CBuffer; // ConstantBuffer, die den firstStepStride an den Shader weitergibt
 
 	// Test-ResultBuffer
 	Vertex* m_Results1; // wird von der GPU befüllt!

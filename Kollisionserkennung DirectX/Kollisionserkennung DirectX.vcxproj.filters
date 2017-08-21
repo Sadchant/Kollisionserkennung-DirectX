@@ -151,6 +151,7 @@
     <None Include="1_BoundingBoxes_CS.hlsl" />
     <None Include="0_ComputeShaderGlobals.hlsl" />
     <None Include="2_SceneBoundingBox_CS.hlsl" />
+    <None Include="3_FillCounterTrees_CS.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Kollisionserkennung DirectX.rc">

@@ -1,8 +1,7 @@
 struct BoundingBox
 {
-    float3 position;
-    float3 volumeVector;
+    float3 minPoint;
+    float3 maxPoint;
 };
 
 StructuredBuffer<float3> vertexBuffer : register(t0);
-static BoundingBox sceneBoundingBox;

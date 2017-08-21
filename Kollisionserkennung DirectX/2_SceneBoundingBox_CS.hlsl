@@ -4,8 +4,6 @@
 StructuredBuffer<float3> minInput : register(t0);
 StructuredBuffer<float3> maxInput : register(t1);
 
-// RWStructuredBuffer<float3> minWork : register(u0);
-// RWStructuredBuffer<float3> maxWork : register(u1);
 RWStructuredBuffer<float3> minOutput : register(u0);
 RWStructuredBuffer<float3> maxOutput : register(u1);
 
@@ -13,7 +11,7 @@ RWStructuredBuffer<float3> maxOutput : register(u1);
 groupshared float3 minTemp[B_SCENEBOUNDINGBOX_XTHREADS];
 groupshared float3 maxTemp[B_SCENEBOUNDINGBOX_XTHREADS];
 
-cbuffer reduceData
+cbuffer reduceData : register(b0)
 {
     int firstStepStride;
     int inputSize;
@@ -124,20 +122,4 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadID, uint3
         maxOutput[groupID] = maxTemp[groupLocalID];
 
     }
-    //result = minOutput[groupID];
-    //_____
-    //float z = a + b + c + d+ e + f;
-    //minOutput[groupLocalID].x = z;
-    //minOutput[groupLocalID + 1] = result;
-    //_____
-
-    // wenn es die 1. gestartete Gruppe war, könnte es das Endergebnis sein (man weiß im Shader nicht wie viele Gruppen gestartet wurden)
-    // merke dir das Ergebnis schonmal in sceneBoundingBox, falls es nur eine Gruppe gab ist es das Endergebnis
-    //if (groupID == 0)
-    //{
-    //    float d = a + b + c;
-    //    int f = d / 2;
-    //    BoundingBox resultBoundingBox = { minOutput[f], maxOutput[0] - minOutput[0] }; // komischer Extraschritt weil sonst der COmpiler meckert
-    //    sceneBoundingBox = resultBoundingBox;
-    //}
 }
