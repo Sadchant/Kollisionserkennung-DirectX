@@ -1,7 +1,7 @@
 #include "HlslSharedDefines.h"
 #include "0_ComputeShaderGlobals.hlsl"
 
-
+StructuredBuffer<float3> vertexBuffer : register(t0);
 StructuredBuffer<int3> triangleBuffer : register(t1);
 
 RWStructuredBuffer<BoundingBox> boundingBoxBuffer : register(u0);
@@ -19,7 +19,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
 
     // es werden immer Blöcke mit 1024 Threads gestartet, die Threads, welche Dreiecke mit
     // IDs außerhalb des Dreiecksbuffers bearbeiten wollen, machen stattdessen nichts
-    if (id > numStructs)
+    if (id >= numStructs)
         return;
 
     // hole das aktuelle Dreieck aus dem Buffer
@@ -40,7 +40,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
         if (curVertex.y < min.y)
             min.y = curVertex.y;
         if (curVertex.z < min.z)
-            min.x = curVertex.x;
+            min.z = curVertex.z;
 
         // korrigiere max-Vertex
         if (curVertex.x > max.x) 
@@ -48,7 +48,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
         if (curVertex.y > max.y)
             max.y = curVertex.y;
         if (curVertex.z > max.z)
-            max.x = curVertex.x;
+            max.z = curVertex.z;
     }
 
     // speichere das Ergebnis im BoundingBoxBuffer

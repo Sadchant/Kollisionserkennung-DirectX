@@ -57,13 +57,13 @@ private:
 	__declspec(align(16)) // Structs in einem ConstantBuffer müpssen auf 16 Byte aligned sein
 	struct FillCounterTreesData
 	{
-		UINT objectCount;
-		XMUINT4 treeSizeInLevel[LEVELS]; // weil hlsl 16 byte pro Array-Eintrag braucht, schreibe und lese immer nur den ersten Eintrag!		
+		XMUINT4 objectCount;
+		XMUINT4 treeSizeInLevel[LEVELS+1]; // weil hlsl 16 byte pro Array-Eintrag braucht, schreibe und lese immer nur den ersten Eintrag!
+		// LEVELS + 1, weil man ja auch die Array-Größe vom höchsten Level kennen möchte
 	};
 
 	void InitComputeShaderVector();
 	void CreateSceneBuffersAndViews();
-
 	ID3D11ComputeShader* CreateComputeShader(WCHAR * csFilename);
 	void CreateVertexAndTriangleArray(vector<ModelClass*>* objects);
 	void ReleaseBuffersAndViews();
@@ -83,6 +83,7 @@ private:
 	Vertex* m_Vertices; // Array: beinhaltet alle Punkte, also dreimal so viele wie es indices gibt
 	Triangle* m_Triangles;
 	UINT* m_ObjectsLastIndices; // hält pro Objekt den letzten Index, der zu diesem Objekt gehört
+	UINT* m_CounterTrees_0s;
 	FillCounterTreesData m_FillCounterTreesData;
 
 	vector<ID3D11ComputeShader*> m_ComputeShaderVector;

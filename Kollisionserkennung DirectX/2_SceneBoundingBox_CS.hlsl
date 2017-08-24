@@ -35,7 +35,7 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadID, uint3
     uint groupID = Gid.x;
 
     // für die IDs, die im ersten Schritt keinen Counterpart auf der inaktiven Seite haben
-    if ((id + firstStepStride) > inputSize)
+    if ((id + firstStepStride) >= inputSize)
     {
         if (!bool_OutputIsInput)
         {
@@ -86,7 +86,7 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadID, uint3
             // sonst kommt "thread sync operation found in varying flow control", also leeres if-else
         }
         // beim letzten Durchlauf insgesamt, wenn es nur noch einen Block gibt, kann es sein dass man wieder über die Daten hinausgeht mit id + i, deswegen:
-        else if (id + i > inputSize)
+        else if (id + i >= inputSize)
         {
             if (!bool_OutputIsInput)
             {

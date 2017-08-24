@@ -1,42 +1,42 @@
 #include "HlslSharedDefines.h"
 #include "0_ComputeShaderGlobals.hlsl"
 
+// Könnte man hier auch als read-only einlesen!
 RWStructuredBuffer<float3> sceneMinPoints : register(u0); // nur von Stelle 0 lesen, da steht der MinPoint der Szene!
 RWStructuredBuffer<float3> sceneMaxPoints : register(u1); // nur von Stelle 1 lesen, da steht der MaxPoint der Szene!
-
 RWStructuredBuffer<BoundingBox> boundingBoxBuffer : register(u2);
+RWStructuredBuffer<uint> counterTrees : register(u3); // nur von Stelle 1 lesen, da steht der MaxPoint der Szene!
 
-RWStructuredBuffer<int> counterTrees : register(u3); // nur von Stelle 1 lesen, da steht der MaxPoint der Szene!
-
-StructuredBuffer<int> objectLastIndices : register(t0);
+StructuredBuffer<uint> objectLastIndices : register(t0);
 
 cbuffer fillCounterTreesData : register(b0)
 {
-    int objectCount;
-    uint treeSizeUntilLevel[LEVELS];
+    uint4 objectCount;
+    uint4 treeSizeInLevel[LEVELS + 1]; // uint4, da in Constant Buffers ein Array-Eintrag immer 16 Byte hat, lese also nur von x! 
+    // (könnte man auch geschickter lösen, aber an der Stelle lieber dass bisschen Speicher verschwenden als zusätzliche Instruktionen zum uin4 auseinanderbauen auszuführen)
 };
 
 // berechne aus 3D-Koordinaten, der aktuellen Größe des Grids und dem Level-Offset die 1-dimensionale ID
-int get1DID(int x, int y, int z, int resolution, int offset)
+uint get1DID(uint x, uint y, uint z, uint resolution, uint offset)
 {
     return x + y * resolution + z * resolution * resolution + offset;
 }
 
 [numthreads(C_FILLCOUNTERTREES_XTHREADS, C_FILLCOUNTERTREES_YTHREADS, C_FILLCOUNTERTREES_ZTHREADS)]
-void main( uint3 DTid : SV_DispatchThreadID )
+void main(uint3 DTid : SV_DispatchThreadID)
 {
-    int id = DTid.x;
+    uint id = DTid.x;
     // obligatorische Überprüfung für den Block, der "zu wenig" zu tun hat
-    int bufferSize, stride;
-    boundingBoxBuffer.GetDimensions(bufferSize, stride);    
-    if (id > bufferSize)
+    uint bufferSize, stride;
+    boundingBoxBuffer.GetDimensions(bufferSize, stride);
+    if (id >= bufferSize)
         return;
 
     // ### bei großer Objektanzahl sollte dieses Vorgehen noch optimiert werden!
     // Suche das Objekt, das gerade von diesem Thread bearbeitet wird
-    int objectID;
+    uint objectID;
     // die for-Schleife läuft über die Liste aller letzten Indices der Objekte    
-    for (int i = 0; i < objectCount; i++)
+    for (uint i = 0; i < objectCount.x; i++)
     {
         // wenn die ID größer ist als ein lastIndex eines Objektes, kann die ID nicht innerhalb
         // des Objektes liegen, sobald die ID also kleiner ist als ein lastIndex, haben wir mit i,
@@ -44,25 +44,29 @@ void main( uint3 DTid : SV_DispatchThreadID )
         if (id < objectLastIndices[i])
         {
             objectID = i;
-            return; // sobald die ID gefunden wurde brauchen wir nicht weitersuchen
+            break; // sobald die ID gefunden wurde brauchen wir nicht weitersuchen
         }
     }
     // das objectOffset gilt für counterTrees, ab welcher Position der Countertree vom Objekt mit objectID anfängt
-    // in treeSizeUntilLevel[LEVELS] steht die Gesamtgröße eines Countertrees
-    uint objectOffset = objectID * treeSizeUntilLevel[LEVELS];
+    // in treeSizeInLevel[LEVELS].x steht die Gesamtgröße eines Countertrees (treeSizeInLvel[LEVELS+1] ist outofBounds!)
+
+    uint objectOffset = objectID * treeSizeInLevel[LEVELS].x;
+    
 
     // hole die sceneBoundingBox aus den beiden Ergebnisbuffern vom letzten Shader, wo jeweils der erste Eintrag Minimum, bzw Maximum sind
-    BoundingBox sceneBoundingBox = { sceneMinPoints[0], sceneMaxPoints[0] };
+    BoundingBox sceneBoundingBox = { sceneMinPoints[0]-0.00001, sceneMaxPoints[0]+0.00001 }; // vergrößere die Bounding Box minimal, um float-Ungenauigkeiten bei Bearbeitung der Dreiecke, die die Bounding Box definieren zu vermeiden
     float3 sceneBoundingBoxVolumeVector = sceneBoundingBox.maxPoint - sceneBoundingBox.minPoint;
     // hole die Bounding Box aus dem Buffer, die in diesem Thread bearbeitet wird
     BoundingBox curBoundingBox = boundingBoxBuffer[id];
     // so viele Gridzellen beinhaltet der Tree, wenn man nur das höchste Level betrachtet
-    uint maxRes = (uint)pow(8, LEVELS);
+    //uint maxRes = (uint)pow(8, LEVELS);
+    //pow(2^x, y) = 1 << x * y
 
-    // iteriere über alle Level im Tree
-    for (int level = 0; level <= LEVELS; level++)
+
+    // iteriere über alle Level im Tree, <= weil: Bei LEVEL = 1 gibt es ja eine Unterteilung, also zwei unterschiedliche Level
+    for (int level = 1; level <= LEVELS; level++)
     {
-        uint curRes = pow(8, i); // wie viele Gridzellen gibt es im Level, dass die for-Schleife gerade bearbeitet
+        uint curRes = pow(2, level); // wie viele Gridzellen gibt es im Level pro Dimension, dass die for-Schleife gerade bearbeitet, 2: Auflösung pro Dimension, 8 wäre Anzahl der Zellen im 3D-Raum
         // curScale: um welchen Wert müssen Koordinaten in der Szene skaliert werden, damit bei der aktuellen Auflösung die Gridzellen in jeder Dimension auf
         // den Koordinaten (pro Dimension) 0, 1, 2, 3, 4 anfangen und nicht bei Kommazahlen oder Ganzzahlen, die weiter auseinander liegen als 1
         float3 curScale = { curRes / sceneBoundingBoxVolumeVector.x, curRes / sceneBoundingBoxVolumeVector.y, curRes / sceneBoundingBoxVolumeVector.z };
@@ -81,16 +85,22 @@ void main( uint3 DTid : SV_DispatchThreadID )
         uint3 overlapRange = curBBMaxGridPosition - curBBMinGridPosition;
 
         // laufe über alle Gridzellen, die von curBoundingBox überlappt werden und erhöhe in Ihnen den trieangle-Count um 1
-        for (int x = 0; x < overlapRange.x; x++)
+        // warum <=? Weil bei overlapRange = 0 trotzdem einmal in die for-Schleifen gegangen werden soll für die Zelle, in der der MinPoint der curBoundingBox liegt
+        for (uint x = 0; x <= overlapRange.x; x++)
         {
-            for (int y = 0; y < overlapRange.y; y++)
+            for (uint y = 0; y <= overlapRange.y; y++)
             {
-                for (int z = 0; z < overlapRange.z; z++)
+                for (uint z = 0; z <= overlapRange.z; z++)
                 {
-                    int3 curOverlapOffset = { x, y, z };
-                    int3 cur3DID = curBBMinGridPosition + curOverlapOffset; // rechne die 3D-Position im Grid an der aktuellen Overlap-Stelle aus
-                    int cur1ID = get1DID(cur3DID.x, cur3DID.y, cur3DID.z, curRes, treeSizeUntilLevel[i - 1]);
-                    // offset = treeSizeUntilLevel[i - 1], weil in treeSizeUntilLevel[i] auch die Größe des aktuellen Levels steht, die aber nicht zum offset gehört
+                    uint3 curOverlapOffset = { x, y, z };
+                    uint3 cur3DID = curBBMinGridPosition + curOverlapOffset; // rechne die 3D-Position im Grid an der aktuellen Overlap-Stelle aus
+                    uint curOffset; // Wieviel Platz im 1D-Array wird duch die vorangegangenen Level belegt?
+                    if (level == 0)
+                        curOffset = 0;
+                    else
+                        curOffset = treeSizeInLevel[level - 1].x;
+                    uint cur1ID = get1DID(cur3DID.x, cur3DID.y, cur3DID.z, curRes, curOffset);
+                    // offset = treeSizeInLevel[i - 1], weil in treeSizeInLevel[i] auch die Größe des aktuellen Levels steht, die aber nicht zum offset gehört
                     // Zwei Threads sollten nicht gleichzeitig in eine Gridzelle schreiben, also erhöhe den Counter atomar
                     InterlockedAdd(counterTrees[objectOffset + cur1ID], 1);
                 }
