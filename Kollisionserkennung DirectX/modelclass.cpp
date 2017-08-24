@@ -379,7 +379,7 @@ bool ModelClass::LoadModel(char* filename)
 		else if (i == (m_vertexCount / 10) * 9)
 			cout << "Verarbeitung 90% abgeschlossen..." << endl;
 	}
-	cout << "Verarbeitung 100% abgeschlossen...";
+	cout << "Verarbeitung 100% abgeschlossen..." << endl;
 
 	// Close the model file.
 	fin.close();

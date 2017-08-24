@@ -4,4 +4,3 @@ struct BoundingBox
     float3 maxPoint;
 };
 
-StructuredBuffer<float3> vertexBuffer : register(t0);
