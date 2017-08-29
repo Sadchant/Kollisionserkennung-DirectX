@@ -5,15 +5,16 @@
 RWStructuredBuffer<float3> sceneMinPoints : register(u0); // nur von Stelle 0 lesen, da steht der MinPoint der Szene!
 RWStructuredBuffer<float3> sceneMaxPoints : register(u1); // nur von Stelle 1 lesen, da steht der MaxPoint der Szene!
 RWStructuredBuffer<BoundingBox> boundingBoxBuffer : register(u2);
-RWStructuredBuffer<uint> counterTrees : register(u3); // nur von Stelle 1 lesen, da steht der MaxPoint der Szene!
+RWStructuredBuffer<uint> counterTrees : register(u3); // ist mit 0en initialisiert und wird atomar befüllt
 
 StructuredBuffer<uint> objectLastIndices : register(t0);
 
 cbuffer fillCounterTreesData : register(b0)
 {
     uint4 objectCount;
-    uint4 treeSizeInLevel[LEVELS + 1]; // uint4, da in Constant Buffers ein Array-Eintrag immer 16 Byte hat, lese also nur von x! 
-    // (könnte man auch geschickter lösen, aber an der Stelle lieber dass bisschen Speicher verschwenden als zusätzliche Instruktionen zum uin4 auseinanderbauen auszuführen)
+    uint4 treeSizeInLevel[SUBDIVS + 1]; // uint4, da in Constant Buffers ein Array-Eintrag immer 16 Byte hat, lese also nur von x! 
+    // (könnte man auch geschickter lösen, aber an der Stelle lieber dass bisschen Speicher verschwenden als zusätzliche Instruktionen
+    // zum uin4 auseinanderbauen auszuführen)
 };
 
 // berechne aus 3D-Koordinaten, der aktuellen Größe des Grids und dem Level-Offset die 1-dimensionale ID
@@ -48,9 +49,9 @@ void main(uint3 DTid : SV_DispatchThreadID)
         }
     }
     // das objectOffset gilt für counterTrees, ab welcher Position der Countertree vom Objekt mit objectID anfängt
-    // in treeSizeInLevel[LEVELS].x steht die Gesamtgröße eines Countertrees (treeSizeInLvel[LEVELS+1] ist outofBounds!)
+    // in treeSizeInLevel[SUBDIVS].x steht die Gesamtgröße eines Countertrees (treeSizeInLvel[SUBDIVS+1] ist outofBounds!)
 
-    uint objectOffset = objectID * treeSizeInLevel[LEVELS].x;
+    uint objectOffset = objectID * treeSizeInLevel[SUBDIVS].x;
     
 
     // hole die sceneBoundingBox aus den beiden Ergebnisbuffern vom letzten Shader, wo jeweils der erste Eintrag Minimum, bzw Maximum sind
@@ -59,12 +60,12 @@ void main(uint3 DTid : SV_DispatchThreadID)
     // hole die Bounding Box aus dem Buffer, die in diesem Thread bearbeitet wird
     BoundingBox curBoundingBox = boundingBoxBuffer[id];
     // so viele Gridzellen beinhaltet der Tree, wenn man nur das höchste Level betrachtet
-    //uint maxRes = (uint)pow(8, LEVELS);
+    //uint maxRes = (uint)pow(8, SUBDIVS);
     //pow(2^x, y) = 1 << x * y
 
 
     // iteriere über alle Level im Tree, <= weil: Bei LEVEL = 1 gibt es ja eine Unterteilung, also zwei unterschiedliche Level
-    for (int level = 1; level <= LEVELS; level++)
+    for (int level = 0; level <= SUBDIVS; level++)
     {
         uint curRes = pow(2, level); // wie viele Gridzellen gibt es im Level pro Dimension, dass die for-Schleife gerade bearbeitet, 2: Auflösung pro Dimension, 8 wäre Anzahl der Zellen im 3D-Raum
         // curScale: um welchen Wert müssen Koordinaten in der Szene skaliert werden, damit bei der aktuellen Auflösung die Gridzellen in jeder Dimension auf

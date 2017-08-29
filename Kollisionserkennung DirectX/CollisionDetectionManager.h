@@ -18,16 +18,12 @@ public:
 	~CollisionDetectionManager();
 	void Initialize(ID3D11Device * device, ID3D11DeviceContext* deviceContext, HWND hwnd, vector<ModelClass*>* objects);
 	void Shutdown();
-
+	bool Frame();
 
 	ID3D11Buffer * CreateStructuredBuffer(UINT count, UINT structsize, UINT bindFlags, D3D11_USAGE usage, UINT CPUAccessFlags, D3D11_SUBRESOURCE_DATA *pData);
 	ID3D11UnorderedAccessView * CreateBufferUnorderedAccessView(ID3D11Resource * pResource, int elementCount);
-
 	ID3D11ShaderResourceView * CreateBufferShaderResourceView(ID3D11Resource * pResource, int elementCount);
-
 	void OutputShaderErrorMessage(ID3D10Blob * errorMessage, HWND hwnd, WCHAR * shaderFilename);
-
-	bool Frame();
 
 private:
 	struct Vertex
@@ -58,7 +54,7 @@ private:
 	struct FillCounterTreesData
 	{
 		XMUINT4 objectCount;
-		XMUINT4 treeSizeInLevel[LEVELS+1]; // weil hlsl 16 byte pro Array-Eintrag braucht, schreibe und lese immer nur den ersten Eintrag!
+		XMUINT4 treeSizeInLevel[SUBDIVS+1]; // weil hlsl 16 byte pro Array-Eintrag braucht, schreibe und lese immer nur den ersten Eintrag!
 		// LEVELS + 1, weil man ja auch die Array-Größe vom höchsten Level kennen möchte
 	};
 
@@ -96,6 +92,7 @@ private:
 	ID3D11Buffer* m_GroupMinPoint_Buffer; // Ergebnisbuffer einer Reduktion: beinhaltet nach einem Durchlauf die MinimalPunkte, die jede Gruppe berechnet hat
 	ID3D11Buffer* m_GroupMaxPoint_Buffer; // das selbe für die MaximalPunkte
 	ID3D11Buffer* m_CounterTrees_Buffer; // die Countertrees für alle Objekte
+	ID3D11Buffer* m_GlobalCounterTree_Buffer; // die Countertrees für alle Objekte
 	
 	ID3D11Buffer* m_ReduceData_CBuffer; // ConstantBuffer, die den firstStepStride an den Shader weitergibt
 	ID3D11Buffer* m_FillCounterTreesData_CBuffer; // ConstantBuffer, die den firstStepStride an den Shader weitergibt
@@ -105,11 +102,13 @@ private:
 	Vertex* m_Results2_1; // wird von der GPU befüllt!
 	Vertex* m_Results2_2; // wird von der GPU befüllt!
 	UINT* m_Results3; // wird von der GPU befüllt!
+	UINT* m_Results4; // wird von der GPU befüllt!
 
 	ID3D11Buffer* m_Result_Buffer1; // ein langsamer (CPU-Zugriff!) ResultBuffer, in den ein Ergebnis von der GPU kopiert wird
 	ID3D11Buffer* m_Result_Buffer2_1; // ein langsamer (CPU-Zugriff!) ResultBuffer, in den ein Ergebnis von der GPU kopiert wird
 	ID3D11Buffer* m_Result_Buffer2_2; // ein langsamer (CPU-Zugriff!) ResultBuffer, in den ein Ergebnis von der GPU kopiert wird
 	ID3D11Buffer* m_Result_Buffer3; // ein langsamer (CPU-Zugriff!) ResultBuffer, in den ein Ergebnis von der GPU kopiert wird
+	ID3D11Buffer* m_Result_Buffer4; // ein langsamer (CPU-Zugriff!) ResultBuffer, in den ein Ergebnis von der GPU kopiert wird
 
 
 	// Shader Resource Views und Unordered Access Views für die Buffer
@@ -124,6 +123,7 @@ private:
 	ID3D11UnorderedAccessView* m_GroupMinPoint_UAV;
 	ID3D11UnorderedAccessView* m_GroupMaxPoint_UAV;
 	ID3D11UnorderedAccessView* m_CounterTrees_UAV;
+	ID3D11UnorderedAccessView* m_GlobalCounterTree_UAV;
 
 };
 
