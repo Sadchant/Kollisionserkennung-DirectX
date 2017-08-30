@@ -17,11 +17,7 @@ cbuffer fillCounterTreesData : register(b0)
     // zum uin4 auseinanderbauen auszuführen)
 };
 
-// berechne aus 3D-Koordinaten, der aktuellen Größe des Grids und dem Level-Offset die 1-dimensionale ID
-uint get1DID(uint x, uint y, uint z, uint resolution, uint offset)
-{
-    return x + y * resolution + z * resolution * resolution + offset;
-}
+
 
 [numthreads(C_FILLCOUNTERTREES_XTHREADS, C_FILLCOUNTERTREES_YTHREADS, C_FILLCOUNTERTREES_ZTHREADS)]
 void main(uint3 DTid : SV_DispatchThreadID)
