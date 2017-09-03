@@ -7,7 +7,7 @@ StructuredBuffer<int3> triangleBuffer : register(t1);
 RWStructuredBuffer<BoundingBox> boundingBoxBuffer : register(u0);
 
 
-[numthreads(A_BOUNDINGBOXES_XTHREADS, A_BOUNDINGBOXES_YTHREADS, A_BOUNDINGBOXES_ZTHREADS)]
+[numthreads(_1_BOUNDINGBOXES_XTHREADS, _1_BOUNDINGBOXES_YTHREADS, _1_BOUNDINGBOXES_ZTHREADS)]
 void main(uint3 DTid : SV_DispatchThreadID)
 {
     // merke dir die ThreadId dieses Threads in id (.x, da eindimensionale Struktur)

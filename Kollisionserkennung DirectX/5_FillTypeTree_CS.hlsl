@@ -3,11 +3,15 @@
 
 RWStructuredBuffer<uint> globalCounterTree : register(u0);
 RWStructuredBuffer<uint> typeTree : register(u1);
-cbuffer FillTypeTreeData
+cbuffer TreeSizeInLevels : register(b0)
 { // nur die erste Stelle von den uint4 lesen!
-    uint4 startLevel; // bei welchem Level startet die for-Schleife?
     uint4 treeSizeInLevels[SUBDIVS + 1];
 };
+cbuffer StartLevel : register(b1)
+{ // nur die erste Stelle von den uint4 lesen!
+    uint startLevel; // bei welchem Level startet die for-Schleife?
+};
+
 
 // dieses Mal werden 3D-Ids genutzt, da das Problem mit 3D-IDs wesentlich leichter lösbar ist
 [numthreads(_5_FILLTYPETREE_XTHREADS, _5_FILLTYPETREE_YTHREADS, _5_FILLTYPETREE_ZTHREADS)]
@@ -24,7 +28,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
     uint curLevel = startLevel; // curLevel wird pro for-Durchlauf um 1 erniedrigt und dient dazu, den Offset und die Resolution für die 1D-ID im Tree zu berechnen
     for (int i = forStartNumber; i >= 0; i--) // wichtig: bei 0 gibt es einen weiter Durchlauf, deswegen ist i auch kein uint
     {
-        uint threadAliveNumber = pow(2, 3 - 1); // gibt an, welche Threads im aktuellen for-Durchlauf noch aktiv sind und wird zur Umrechnung ThreadID->TreeID benutzt
+        uint threadAliveNumber = pow(2, 3 - i); // gibt an, welche Threads im aktuellen for-Durchlauf noch aktiv sind und wird zur Umrechnung ThreadID->TreeID benutzt
         // bei i=3: threadAliveNumber = 1 im ersten Durchlauf, 2 im zweiten, 4 im Dritten, 8 im Vierten, bei kleinerem Start-i fängt die Reihe weiter hinten an, zB bei 2
         // durch das % threadAlive-Number wird sichergestellt, dass wenn nicht alle Threads etwas zu tun haben, nur die unteren linken der letzten Auflösungsstufe weiterarbeiten
         if ((DTid.x % threadAliveNumber == 0) &&
@@ -33,13 +37,13 @@ void main(uint3 DTid : SV_DispatchThreadID)
         {
             uint3 curParent3DID = DTid / threadAliveNumber; // die 3D-ID der Elternzelle, die aktuell bearbeitet wird
             uint curParentRes = pow(2, curLevel); // die Auflösung des Levels, in der der die aktuell bearbeitete Elternzelle liegt
-            uint curOffset = treeSizeInLevels[curLevel - 1]; // der Offset wird mit dem aktuellen Level aus treeSizeInLevels geholt (treeSizeInLevels[curLevel-1] beinhaltet die Größe des Baums bis zum aktuellen Level)
+            uint curOffset = treeSizeInLevels[curLevel - 1].x; // der Offset wird mit dem aktuellen Level aus treeSizeInLevels geholt (treeSizeInLevels[curLevel-1] beinhaltet die Größe des Baums bis zum aktuellen Level)
             uint curParent1DID = get1DID(curParent3DID.x, curParent3DID.y, curParent3DID.z, curParentRes, curOffset); // mit der 1D-ID kann auf die Buffer zugegriffen werden, die linear aufgebaut sind
             uint curParentCount = globalCounterTree[curParent1DID]; // die Anzahl an ÜberschneidungsTests für die aktelle Zelle
             uint curChildsCount = 0; // die Anzahl an Überschneidungstests für die 8 Kind-Zellen
             uint3 bottomLeftChildID = curParent3DID * 2; // die ID der KindZelle- die räumlich gesehen unten links vorne in der Elternzelle liegt
             uint curChildRes = curParentRes * 2; // die Auflösung des Levels, auf dem die Kind-Zellen liegen
-            uint curChildOffset = treeSizeInLevels[curLevel]; // der Offset für die Berechnung der 1D-IDs der Kind-Zellen
+            uint curChildOffset = treeSizeInLevels[curLevel].x; // der Offset für die Berechnung der 1D-IDs der Kind-Zellen
             uint curChilds1DIDs[8]; // merke dir die 1D-IDs der Kind-Zellen in einem Array, da die 1D-IDs später noch einmal benötigt werden und nicht doppelt berechnet werden sollen
             for (uint x = 0; x < 2; x++) // es gibt 2x2x2 Kindzellen
             {
@@ -47,29 +51,32 @@ void main(uint3 DTid : SV_DispatchThreadID)
                 {
                     for (uint z = 0; z < 2; z++) // laufe über alle Dimensionen und berechne die Vektoren, die ausgehend von der Zelle unten links alle Kindzellen abdecken
                     {
-                        uint3 curChild3DID = bottomLeftChildID + (x, y, z); // berechne die aktuelle Kind-3D-ID aus der ID unten links und dem aktuellen Richtungs-Vektor
+                        uint3 curChild3DID = bottomLeftChildID + uint3(x, y, z); // berechne die aktuelle Kind-3D-ID aus der ID unten links und dem aktuellen Richtungs-Vektor
                         uint curChild1DID = get1DID(curChild3DID.x, curChild3DID.y, curChild3DID.z, curChildRes, curChildOffset); // berechne die aktuelle Kind-1D-ID
                         curChilds1DIDs[x * 4 + y * 2 + z] = curChild1DID; // merke dir die aktuelle ID in curChilds1DIDs
                         curChildsCount += globalCounterTree[curChild1DID]; // zähle alle Kind-Werte zusammen, das Ergebnis steht am Ende in curChildsCount
                     }
                 }
             }
-            uint childsType = EMPTY; // der Typ der Kind-Zellen (es gibt EMPTY, INTERNAL und LEAF)
+            
             if (curChildsCount < curParentCount) // wenn die aufaddierten Kind-Werte kleiner sind als der Eltern-Wert:
-            {
-                if (typeTree[curChilds1DIDs[0]] != INTERNAL) // die Kind-Zellen werden als Blatt markiert, sofern sie nicht eigene Kinder haben
-                    childsType = LEAF;
+            {             
                 globalCounterTree[curParent1DID] = curChildsCount; // im Countertree die Elternzelle mit dem geringeren Wert belegen
-                typeTree[curParent1DID] = INTERNAL; // die Kindzellen bleiben bestehen, also ist die ELternzelle intern 
+                
+                typeTree[curParent1DID] = INTERNAL; // die Kindzellen bleiben bestehen, also ist die ELternzelle intern
+                for (uint c = 0; c < 8; c++) // trage den vorher gesetzten Typ in die 8 Kindzellen ein
+                {
+                    if (typeTree[curChilds1DIDs[c]] != INTERNAL) // die Kind-Zellen werden als Blatt markiert, sofern sie nicht eigene Kinder haben
+                        typeTree[curChilds1DIDs[c]] = LEAF;
+                }
             }
             else // ansonsten, wenn die Elternzelle einen geringeren Wert an Überschneidungstests hat als die 8 Kindzellen zusammen:
             {
                 typeTree[curParent1DID] = LEAF; // markiere die Eltern-Zelle als Blatt
-                childsType = EMPTY; // die Kind-Zellen werden als leer markiert
-            }            
-            for (uint c; c < 8; c++) // trage den vorher gesetzten Typ in die 8 Kindzellen ein
-            {
-                typeTree[curChilds1DIDs[c]] = childsType; 
+                for (uint c = 0; c < 8; c++) // die Kindzellen sind leer, da der Baum bei ihrer Elternzelle endet
+                {
+                    typeTree[curChilds1DIDs[c]] = EMPTY;
+                }
             }
         }
         // Wichtig: AllMemory, nicht Groupmemory, da im globalen Speicher operiert wird

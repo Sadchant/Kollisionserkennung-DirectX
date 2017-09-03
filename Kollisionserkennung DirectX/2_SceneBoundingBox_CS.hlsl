@@ -8,8 +8,8 @@ RWStructuredBuffer<float3> minOutput : register(u0);
 RWStructuredBuffer<float3> maxOutput : register(u1);
 
 // groupshared, also greife nur mit groupLocalID darauf zu, sonst könnte man aus dem Speicher laufen!
-groupshared float3 minTemp[B_SCENEBOUNDINGBOX_XTHREADS];
-groupshared float3 maxTemp[B_SCENEBOUNDINGBOX_XTHREADS];
+groupshared float3 minTemp[_2_SCENEBOUNDINGBOX_XTHREADS];
+groupshared float3 maxTemp[_2_SCENEBOUNDINGBOX_XTHREADS];
 
 cbuffer reduceData : register(b0)
 {
@@ -19,17 +19,9 @@ cbuffer reduceData : register(b0)
 }
 
 
-[numthreads(B_SCENEBOUNDINGBOX_XTHREADS, B_SCENEBOUNDINGBOX_YTHREADS, B_SCENEBOUNDINGBOX_ZTHREADS)]
+[numthreads(_2_SCENEBOUNDINGBOX_XTHREADS, _2_SCENEBOUNDINGBOX_YTHREADS, _2_SCENEBOUNDINGBOX_ZTHREADS)]
 void main(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadID, uint3 Gid : SV_GroupID)
 {
-    float a = 0.0f;
-    float b = 0.0f;
-    float c = 0.0f;
-    float d = 0.0f;
-    float e = 0.0f;
-    float f = 0.0f;
-    float3 result;
-
     uint id = DTid.x;
     uint groupLocalID = GTid.x;
     uint groupID = Gid.x;
@@ -77,7 +69,7 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadID, uint3
     GroupMemoryBarrierWithGroupSync();
 
     // der Rest der Daten wird iterativ weiterverarbeitet, bis die aktuelle Gruppe ihren Bereich reduziert hat
-    for (uint i = B_SCENEBOUNDINGBOX_XTHREADS / 2; i > 0; i /= 2)
+    for (uint i = _2_SCENEBOUNDINGBOX_XTHREADS / 2; i > 0; i /= 2)
     {
         // die Threads, die im Teil der inaktiven Daten liegen, bekommen nie wieder etwas zu tun in diesem Dispatch und können returnen
         if (groupLocalID > i)

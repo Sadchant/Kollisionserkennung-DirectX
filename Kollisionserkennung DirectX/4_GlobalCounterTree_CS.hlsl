@@ -5,15 +5,18 @@
 RWStructuredBuffer<uint> counterTrees : register(u0); // Input, allerdings wird dieser Shader benutzt, 
 RWStructuredBuffer<uint> globalCounterTree : register(u1); // nur von Stelle 1 lesen, da steht der MaxPoint der Szene!
 
-cbuffer fillCounterTreesData : register(b0)
+cbuffer ObjectCount : register(b0)
 {
-    uint4 objectCount;
+    uint objectCount;
+};
+cbuffer TreeSizeInLevel : register(b1)
+{
     uint4 treeSizeInLevel[SUBDIVS + 1]; // uint4, da in Constant Buffers ein Array-Eintrag immer 16 Byte hat, lese also nur von x! 
     // (könnte man auch geschickter lösen, aber an der Stelle lieber dass bisschen Speicher verschwenden als zusätzliche Instruktionen
     // zum uin4 auseinanderbauen auszuführen)
 };
 
-[numthreads(D_GLOBALCOUNTERTREE_XTHREADS, D_GLOBALCOUNTERTREE_YTHREADS, D_GLOBALCOUNTERTREE_ZTHREADS)]
+[numthreads(_4_GLOBALCOUNTERTREE_XTHREADS, _4_GLOBALCOUNTERTREE_YTHREADS, _4_GLOBALCOUNTERTREE_ZTHREADS)]
 void main(uint3 DTid : SV_DispatchThreadID)
 {
     uint id = DTid.x;
@@ -24,7 +27,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
     uint boundingBoxCounts[MAXCOLLIDINGOBJECTS]; // pro Objekt die Anzahl der Dreiecke, ohne 0er, hieraus wird der letztendliche intersectionTestCount berechnet
 
     // gehe über alle Countertrees (1 pro Objekt)
-    for (uint i = 0; i < objectCount.x; i++)
+    for (uint i = 0; i < objectCount; i++)
     {
         // berechne die Id der Zelle in Countertrees, die in diesem Durchlauf verrechnet wird
         uint curID = id + i * treeSizeInLevel[SUBDIVS].x;

@@ -7,19 +7,20 @@ RWStructuredBuffer<float3> sceneMaxPoints : register(u1); // nur von Stelle 1 le
 RWStructuredBuffer<BoundingBox> boundingBoxBuffer : register(u2);
 RWStructuredBuffer<uint> counterTrees : register(u3); // ist mit 0en initialisiert und wird atomar befüllt
 
-StructuredBuffer<uint> objectLastIndices : register(t0);
+StructuredBuffer<uint> objectsLastIndices : register(t0);
 
-cbuffer fillCounterTreesData : register(b0)
+cbuffer ObjectCount : register(b0)
 {
-    uint4 objectCount;
+    uint objectCount;
+};
+cbuffer TreeSizeInLevel : register(b1)
+{
     uint4 treeSizeInLevel[SUBDIVS + 1]; // uint4, da in Constant Buffers ein Array-Eintrag immer 16 Byte hat, lese also nur von x! 
     // (könnte man auch geschickter lösen, aber an der Stelle lieber dass bisschen Speicher verschwenden als zusätzliche Instruktionen
-    // zum uin4 auseinanderbauen auszuführen)
+    // zum uint4 auseinanderbauen auszuführen)
 };
 
-
-
-[numthreads(C_FILLCOUNTERTREES_XTHREADS, C_FILLCOUNTERTREES_YTHREADS, C_FILLCOUNTERTREES_ZTHREADS)]
+[numthreads(_3_FILLCOUNTERTREES_XTHREADS, _3_FILLCOUNTERTREES_YTHREADS, _3_FILLCOUNTERTREES_ZTHREADS)]
 void main(uint3 DTid : SV_DispatchThreadID)
 {
     uint id = DTid.x;
@@ -33,12 +34,12 @@ void main(uint3 DTid : SV_DispatchThreadID)
     // Suche das Objekt, das gerade von diesem Thread bearbeitet wird
     uint objectID;
     // die for-Schleife läuft über die Liste aller letzten Indices der Objekte    
-    for (uint i = 0; i < objectCount.x; i++)
+    for (uint i = 0; i < objectCount; i++)
     {
         // wenn die ID größer ist als ein lastIndex eines Objektes, kann die ID nicht innerhalb
         // des Objektes liegen, sobald die ID also kleiner ist als ein lastIndex, haben wir mit i,
         // welches ja die Objekte durchnummeriert die aktuelle Objekt-ID gefunden
-        if (id < objectLastIndices[i])
+        if (id <= objectsLastIndices[i])
         {
             objectID = i;
             break; // sobald die ID gefunden wurde brauchen wir nicht weitersuchen

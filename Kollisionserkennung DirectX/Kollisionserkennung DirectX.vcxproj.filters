@@ -153,13 +153,11 @@
     <None Include="2_SceneBoundingBox_CS.hlsl" />
     <None Include="3_FillCounterTrees_CS.hlsl" />
     <None Include="4_GlobalCounterTree_CS.hlsl" />
+    <None Include="5_FillTypeTree_CS.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Kollisionserkennung DirectX.rc">
       <Filter>Resource Files</Filter>
     </ResourceCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <FxCompile Include="5_FillTypeTree_CS.hlsl" />
   </ItemGroup>
 </Project>
