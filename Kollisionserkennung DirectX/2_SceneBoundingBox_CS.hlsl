@@ -53,7 +53,6 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadID, uint3
         maxTemp[groupLocalID].x = max(maxInput[id].x, maxInput[id + firstStepStride].x);
         maxTemp[groupLocalID].y = max(maxInput[id].y, maxInput[id + firstStepStride].y);
         maxTemp[groupLocalID].z = max(maxInput[id].z, maxInput[id + firstStepStride].z);
-        c = minTemp[groupLocalID].x;
     }
     else // wenn Output der Input ist, lese vom Output :)
     {
@@ -112,6 +111,5 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadID, uint3
     {
         minOutput[groupID] = minTemp[groupLocalID];
         maxOutput[groupID] = maxTemp[groupLocalID];
-
     }
 }

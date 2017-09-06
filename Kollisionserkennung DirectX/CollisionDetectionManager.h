@@ -18,11 +18,13 @@ public:
 	~CollisionDetectionManager();
 	void Initialize(ID3D11Device * device, ID3D11DeviceContext* deviceContext, HWND hwnd, vector<ModelClass*>* objects);
 	void Shutdown();
-	bool Frame();
+	void Frame();
 
-	ID3D11Buffer * CreateStructuredBuffer(UINT count, UINT structsize, UINT bindFlags, D3D11_USAGE usage, UINT CPUAccessFlags, D3D11_SUBRESOURCE_DATA *pData);
-	ID3D11UnorderedAccessView * CreateBufferUnorderedAccessView(ID3D11Resource * pResource, int elementCount);
-	ID3D11ShaderResourceView * CreateBufferShaderResourceView(ID3D11Resource * pResource, int elementCount);
+	ID3D11Buffer* CreateStructuredBuffer(UINT count, UINT structsize, UINT bindFlags, D3D11_USAGE usage, UINT CPUAccessFlags, D3D11_SUBRESOURCE_DATA *pData);
+	ID3D11UnorderedAccessView* CreateBufferUnorderedAccessView(ID3D11Resource* pResource, int elementCount);
+	ID3D11UnorderedAccessView* CreateBufferUnorderedAccessView(ID3D11Resource* pResource, int elementCount, UINT flags);
+
+	ID3D11ShaderResourceView* CreateBufferShaderResourceView(ID3D11Resource * pResource, int elementCount);
 	void OutputShaderErrorMessage(ID3D10Blob * errorMessage, HWND hwnd, WCHAR * shaderFilename);
 
 private:
@@ -43,9 +45,14 @@ private:
 		Vertex minPoint;
 		Vector maxPoint;
 	};
+	struct CellTrianglePair
+	{
+		UINT cellID;
+		UINT triangleID;
+	};
 
 	__declspec(align(16)) // Structs in einem ConstantBuffer müpssen auf 16 Byte aligned sein
-	struct ReduceData 
+		struct ReduceData
 	{
 		int firstStepStride;
 		int inputSize;
@@ -53,22 +60,17 @@ private:
 	};
 
 	__declspec(align(16)) // Structs in einem ConstantBuffer müpssen auf 16 Byte aligned sein
-	struct ObjectCount
+		struct SingleUINT
 	{
-		UINT objectCount;
+		UINT value;
 	};
 
 	__declspec(align(16)) // Structs in einem ConstantBuffer müpssen auf 16 Byte aligned sein
-	struct TreeSizeInLevel
+		struct TreeSizeInLevel
 	{
 		XMUINT4 treeSizeInLevel[SUBDIVS + 1];
 	};
 
-	__declspec(align(16)) // Structs in einem ConstantBuffer müpssen auf 16 Byte aligned sein
-	struct StartLevel
-	{ 
-		UINT startLevel; // bei welchem Level startet die for-Schleife?
-	};
 
 	void InitComputeShaderVector();
 	void CreateSceneBuffersAndViews();
@@ -76,7 +78,21 @@ private:
 	void CreateVertexAndTriangleArray(vector<ModelClass*>* objects);
 	void ReleaseBuffersAndViews();
 	ID3D11Buffer* CreateConstantBuffer(UINT elementSize, D3D11_USAGE usage, D3D11_SUBRESOURCE_DATA *pData);
-	
+
+	void _1_BoundingBoxes();
+	void _2_SceneCoundingBox();
+	void _3_FillCounterTrees();
+	void _4_GlobalCounterTree();
+	void _5_FillTypeTree();
+	void _6_FillLeafIndexTree();
+
+	void _1_BoundingBoxes_GetResult();
+	void _2_SceneCoundingBox_GetResult();
+	void _3_FillCounterTrees_GetResult();
+	void _4_GlobalCounterTree_GetResult();
+	void _5_FillTypeTree_GetResult();
+	void _6_FillLeafIndexTree_GetResult();
+
 	ID3D11Device* device;
 	ID3D11DeviceContext* deviceContext;
 	HWND m_hwnd;
@@ -87,6 +103,7 @@ private:
 	int m_GroupResult_Count; // wie groß ist das Ergebnis nach einem Reduce von Buffern der Größe m_VertexCount
 	int m_TreeSize;
 	int m_CounterTreesSize;
+	int m_CellTrianglePairsCount;
 
 	Vertex* m_Vertices; // Array: beinhaltet alle Punkte, also dreimal so viele wie es indices gibt
 	Triangle* m_Triangles;
@@ -106,12 +123,15 @@ private:
 	ID3D11Buffer* m_CounterTrees_Buffer; // die Countertrees für alle Objekte
 	ID3D11Buffer* m_GlobalCounterTree_Buffer; // die Countertrees für alle Objekte
 	ID3D11Buffer* m_TypeTree_Buffer; // der Typetree für den globalen Tree
-	
+	ID3D11Buffer* m_LeafIndexTree_Buffer; // in diesem Tree steht an jeder Stelle die ID der Zelle, die in diesem Zweig Blatt ist
+	ID3D11Buffer* m_CellTrianglePairs_Buffer; // in diesem Tree steht an jeder Stelle die ID der Zelle, die in diesem Zweig Blatt ist
+
 	// ConstantBuffer:
-	ID3D11Buffer* m_ReduceData_CBuffer; 
+	ID3D11Buffer* m_ReduceData_CBuffer;
 	ID3D11Buffer* m_ObjectCount_CBuffer;
 	ID3D11Buffer* m_TreeSizeInLevel_CBuffer;
 	ID3D11Buffer* m_StartLevel_CBuffer;
+	ID3D11Buffer* m_Loops_CBuffer;
 
 	// Test-ResultBuffer
 	BoundingBox* m_Results1; // wird von der GPU befüllt!
@@ -121,6 +141,7 @@ private:
 	UINT* m_Results4; // wird von der GPU befüllt!
 	UINT* m_Results5_1; // wird von der GPU befüllt!
 	UINT* m_Results5_2; // wird von der GPU befüllt!
+	UINT* m_Results6; // wird von der GPU befüllt!
 
 	// langsame (CPU-Zugriff!) ResultBuffer, in die ein Ergebnis von der GPU kopiert wird
 	ID3D11Buffer* m_Result_Buffer1;
@@ -130,6 +151,8 @@ private:
 	ID3D11Buffer* m_Result_Buffer4;
 	ID3D11Buffer* m_Result_Buffer5_1;
 	ID3D11Buffer* m_Result_Buffer5_2;
+	ID3D11Buffer* m_Result_Buffer6;
+
 
 
 	// Shader Resource Views und Unordered Access Views für die Buffer
@@ -146,6 +169,7 @@ private:
 	ID3D11UnorderedAccessView* m_CounterTrees_UAV;
 	ID3D11UnorderedAccessView* m_GlobalCounterTree_UAV;
 	ID3D11UnorderedAccessView* m_TypeTree_UAV;
+	ID3D11UnorderedAccessView* m_LeafIndexTree_UAV;
 
 };
 

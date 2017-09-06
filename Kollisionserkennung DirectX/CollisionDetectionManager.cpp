@@ -16,6 +16,7 @@ CollisionDetectionManager::CollisionDetectionManager()
 	m_Results4 = 0;
 	m_Results5_1 = 0;
 	m_Results5_2 = 0;
+	m_Results6 = 0;
 
 	m_curComputeShader = 0;
 
@@ -28,11 +29,14 @@ CollisionDetectionManager::CollisionDetectionManager()
 	m_CounterTrees_Buffer = 0;
 	m_GlobalCounterTree_Buffer = 0;
 	m_TypeTree_Buffer = 0;
+	m_LeafIndexTree_Buffer = 0;
+	m_CellTrianglePairsCount = 0;
 
 	m_ReduceData_CBuffer = 0;
 	m_ObjectCount_CBuffer = 0;
 	m_TreeSizeInLevel_CBuffer = 0;
 	m_StartLevel_CBuffer = 0;
+	m_Loops_CBuffer = 0;
 
 	m_Result_Buffer1 = 0;
 	m_Result_Buffer2_1 = 0;
@@ -41,6 +45,7 @@ CollisionDetectionManager::CollisionDetectionManager()
 	m_Result_Buffer4 = 0;
 	m_Result_Buffer5_1 = 0;
 	m_Result_Buffer5_2 = 0;
+	m_Result_Buffer6 = 0;
 
 	m_NULL_SRV = NULL;
 	m_NULL_UAV = NULL;
@@ -55,6 +60,7 @@ CollisionDetectionManager::CollisionDetectionManager()
 	m_CounterTrees_UAV = 0;
 	m_GlobalCounterTree_UAV = 0;
 	m_TypeTree_UAV = 0;
+	m_LeafIndexTree_UAV = 0;
 }
 
 
@@ -68,7 +74,8 @@ void CollisionDetectionManager::Initialize(ID3D11Device* device, ID3D11DeviceCon
 	this->deviceContext = deviceContext;
 
 	m_ReduceData_CBuffer = CreateConstantBuffer(sizeof(ReduceData), D3D11_USAGE_DEFAULT, NULL);
-	m_StartLevel_CBuffer = CreateConstantBuffer(sizeof(StartLevel), D3D11_USAGE_DEFAULT, NULL);
+	m_StartLevel_CBuffer = CreateConstantBuffer(sizeof(SingleUINT), D3D11_USAGE_DEFAULT, NULL);
+	m_Loops_CBuffer = CreateConstantBuffer(sizeof(SingleUINT), D3D11_USAGE_DEFAULT, NULL);
 	m_hwnd = hwnd;
 	InitComputeShaderVector();
 
@@ -97,6 +104,8 @@ void CollisionDetectionManager::InitComputeShaderVector()
 	pTempComputeShader = CreateComputeShader(L"../Kollisionserkennung DirectX/4_GlobalCounterTree_CS.hlsl");
 	m_ComputeShaderVector.push_back(pTempComputeShader);
 	pTempComputeShader = CreateComputeShader(L"../Kollisionserkennung DirectX/5_FillTypeTree_CS.hlsl");
+	m_ComputeShaderVector.push_back(pTempComputeShader);
+	pTempComputeShader = CreateComputeShader(L"../Kollisionserkennung DirectX/6_FillLeafIndexTree_CS.hlsl");
 	m_ComputeShaderVector.push_back(pTempComputeShader);
 }
 
@@ -170,14 +179,14 @@ void CollisionDetectionManager::CreateSceneBuffersAndViews()
 	m_GroupMinPoint_Buffer = CreateStructuredBuffer(m_GroupResult_Count, sizeof(Vertex), D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS, D3D11_USAGE_DEFAULT, 0, NULL);
 	m_GroupMaxPoint_Buffer = CreateStructuredBuffer(m_GroupResult_Count, sizeof(Vertex), D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS, D3D11_USAGE_DEFAULT, 0, NULL);
 
-	ObjectCount s_ObjectCount;
+	SingleUINT s_ObjectCount;
 	TreeSizeInLevel s_TreeSizeInLevel;
 	// Berechne aus LEVELS die TreeSize (es wird die Anzahl der Zellen pro Level zusammengerechnet)
 	for (int i = 0; i <= SUBDIVS; i++)
 	{
 		s_TreeSizeInLevel.treeSizeInLevel[i] = { m_TreeSizeInLevel[i], 0, 0, 0 };
 	}
-	s_ObjectCount.objectCount = (UINT)m_ObjectCount;
+	s_ObjectCount.value = (UINT)m_ObjectCount;
 	D3D11_SUBRESOURCE_DATA objectCount_SubresourceData = D3D11_SUBRESOURCE_DATA{ &s_ObjectCount, 0, 0 };
 	D3D11_SUBRESOURCE_DATA treeSizeInLevel_SubresourceData = D3D11_SUBRESOURCE_DATA{ &s_TreeSizeInLevel, 0, 0 };
 
@@ -187,7 +196,7 @@ void CollisionDetectionManager::CreateSceneBuffersAndViews()
 
 	m_CounterTrees_Buffer = CreateStructuredBuffer(m_CounterTreesSize, sizeof(UINT), D3D11_BIND_UNORDERED_ACCESS, D3D11_USAGE_DEFAULT, 0, &counterTrees_SubresourceData);
 	
-	m_ObjectCount_CBuffer = CreateConstantBuffer(sizeof(ObjectCount), D3D11_USAGE_IMMUTABLE, &objectCount_SubresourceData);
+	m_ObjectCount_CBuffer = CreateConstantBuffer(sizeof(SingleUINT), D3D11_USAGE_IMMUTABLE, &objectCount_SubresourceData);
 	m_TreeSizeInLevel_CBuffer = CreateConstantBuffer(sizeof(TreeSizeInLevel), D3D11_USAGE_IMMUTABLE, &treeSizeInLevel_SubresourceData);
 	
 	SAFEDELETEARRAY(counterTrees_0s);
@@ -195,7 +204,10 @@ void CollisionDetectionManager::CreateSceneBuffersAndViews()
 	m_GlobalCounterTree_Buffer = CreateStructuredBuffer(m_TreeSize, sizeof(UINT), D3D11_BIND_UNORDERED_ACCESS, D3D11_USAGE_DEFAULT, 0, NULL);
 	
 	m_TypeTree_Buffer = CreateStructuredBuffer(m_TreeSize, sizeof(UINT), D3D11_BIND_UNORDERED_ACCESS, D3D11_USAGE_DEFAULT, 0, NULL);
-	
+	m_LeafIndexTree_Buffer = CreateStructuredBuffer(m_TreeSize, sizeof(UINT), D3D11_BIND_UNORDERED_ACCESS, D3D11_USAGE_DEFAULT, 0, NULL);
+	m_CellTrianglePairs_Buffer = CreateStructuredBuffer(m_CellTrianglePairsCount, sizeof(UINT), D3D11_BIND_UNORDERED_ACCESS, D3D11_USAGE_DEFAULT, 0, NULL);
+
+
 	m_Result_Buffer1 = CreateStructuredBuffer(m_TriangleCount, sizeof(BoundingBox), 0, D3D11_USAGE_STAGING, D3D11_CPU_ACCESS_READ, NULL);
 	m_Result_Buffer2_1 = CreateStructuredBuffer(m_GroupResult_Count, sizeof(Vertex), 0, D3D11_USAGE_STAGING, D3D11_CPU_ACCESS_READ, NULL);
 	m_Result_Buffer2_2 = CreateStructuredBuffer(m_GroupResult_Count, sizeof(Vertex), 0, D3D11_USAGE_STAGING, D3D11_CPU_ACCESS_READ, NULL);
@@ -203,6 +215,7 @@ void CollisionDetectionManager::CreateSceneBuffersAndViews()
 	m_Result_Buffer4 = CreateStructuredBuffer(m_TreeSize, sizeof(UINT), 0, D3D11_USAGE_STAGING, D3D11_CPU_ACCESS_READ, NULL);
 	m_Result_Buffer5_1 = CreateStructuredBuffer(m_TreeSize, sizeof(UINT), 0, D3D11_USAGE_STAGING, D3D11_CPU_ACCESS_READ, NULL);
 	m_Result_Buffer5_2 = CreateStructuredBuffer(m_TreeSize, sizeof(UINT), 0, D3D11_USAGE_STAGING, D3D11_CPU_ACCESS_READ, NULL);
+	m_Result_Buffer6 = CreateStructuredBuffer(m_TreeSize, sizeof(UINT), 0, D3D11_USAGE_STAGING, D3D11_CPU_ACCESS_READ, NULL);
 
 	m_Vertex_SRV = CreateBufferShaderResourceView(m_Vertex_Buffer, m_VertexCount);
 	m_Triangle_SRV = CreateBufferShaderResourceView(m_Triangle_Buffer, m_TriangleCount);
@@ -217,6 +230,7 @@ void CollisionDetectionManager::CreateSceneBuffersAndViews()
 
 	m_GlobalCounterTree_UAV = CreateBufferUnorderedAccessView(m_GlobalCounterTree_Buffer, m_TreeSize);
 	m_TypeTree_UAV = CreateBufferUnorderedAccessView(m_TypeTree_Buffer, m_TreeSize);
+	m_LeafIndexTree_UAV = CreateBufferUnorderedAccessView(m_LeafIndexTree_Buffer, m_TreeSize);
 
 }
 
@@ -232,6 +246,7 @@ void CollisionDetectionManager::ReleaseBuffersAndViews()
 	SAFERELEASE(m_CounterTrees_Buffer);
 	SAFERELEASE(m_GlobalCounterTree_Buffer);
 	SAFERELEASE(m_TypeTree_Buffer);
+	SAFERELEASE(m_LeafIndexTree_Buffer);
 	// Constant Buffer wird nur einmal erzeugt (weil sich seine Größe nicht ändert), also nur in Shutdown released!
 	SAFERELEASE(m_Result_Buffer1);
 	SAFERELEASE(m_Result_Buffer2_1);
@@ -240,6 +255,7 @@ void CollisionDetectionManager::ReleaseBuffersAndViews()
 	SAFERELEASE(m_Result_Buffer4);
 	SAFERELEASE(m_Result_Buffer5_1);
 	SAFERELEASE(m_Result_Buffer5_2);
+	SAFERELEASE(m_Result_Buffer6);
 
 	SAFERELEASE(m_Vertex_SRV);
 	SAFERELEASE(m_Triangle_SRV);
@@ -251,6 +267,7 @@ void CollisionDetectionManager::ReleaseBuffersAndViews()
 	SAFERELEASE(m_CounterTrees_UAV);
 	SAFERELEASE(m_GlobalCounterTree_UAV);
 	SAFERELEASE(m_TypeTree_UAV);
+	SAFERELEASE(m_LeafIndexTree_UAV);
 	
 }
 
@@ -266,11 +283,13 @@ void CollisionDetectionManager::Shutdown()
 	SAFEDELETEARRAY(m_Results4);
 	SAFEDELETEARRAY(m_Results5_1);
 	SAFEDELETEARRAY(m_Results5_2);
+	SAFEDELETEARRAY(m_Results6);
 
 	SAFERELEASE(m_ReduceData_CBuffer);
 	SAFERELEASE(m_ObjectCount_CBuffer);
 	SAFERELEASE(m_TreeSizeInLevel_CBuffer);
 	SAFERELEASE(m_StartLevel_CBuffer);
+	SAFERELEASE(m_Loops_CBuffer);
 
 	ReleaseBuffersAndViews();
 
@@ -383,6 +402,13 @@ ID3D11Buffer* CollisionDetectionManager::CreateConstantBuffer(UINT elementSize, 
 // Erzeugt unorderd Access View für normalen Structured Buffer
 ID3D11UnorderedAccessView* CollisionDetectionManager::CreateBufferUnorderedAccessView(ID3D11Resource* pResource, int elementCount)
 {
+	// der letzte ist sozusagen ein optionaler Parameter, wenn man den nicht angibt wird er automatisch auf 0 gesetzt
+	CreateBufferUnorderedAccessView(pResource, elementCount, 0);
+}
+
+// Erzeugt unorderd Access View für normalen Structured Buffer
+ID3D11UnorderedAccessView* CollisionDetectionManager::CreateBufferUnorderedAccessView(ID3D11Resource* pResource, int elementCount, UINT flags)
+{
 	D3D11_UNORDERED_ACCESS_VIEW_DESC desc;
 
 	// For structured buffers, DXGI_FORMAT_ UNKNOWN must be used!
@@ -402,7 +428,7 @@ ID3D11UnorderedAccessView* CollisionDetectionManager::CreateBufferUnorderedAcces
 	// D3D11_BUFFER_UAV_FLAG_COUNTER: Adds a counter to the unordered-access-view buffer. D3D11_BUFFER_UAV_FLAG_COUNTER can only 
 	//								  be used on a UAV that is a RWStructuredBuffer and it enables the functionality needed for 
 	//								  the IncrementCounter and DecrementCounter methods in HLSL. Requires the UAV format to be DXGI_FORMAT_UNKNOWN.
-	desc.Buffer.Flags = 0;
+	desc.Buffer.Flags = flags;
 
 	ID3D11UnorderedAccessView* pView = 0;
 	HRESULT hr = device->CreateUnorderedAccessView(pResource, &desc, &pView);
@@ -465,17 +491,9 @@ void CollisionDetectionManager::OutputShaderErrorMessage(ID3D10Blob* errorMessag
 	return;
 }
 
-// führe die Kollisionsberechnung für das aktuelle Frame durch
-bool CollisionDetectionManager::Frame()
+// ******* 1. Berechne Bounding Boxes für jedes Dreieck *******
+void CollisionDetectionManager::_1_BoundingBoxes()
 {
-	HRESULT result;
-	// ******* 1. Berechne Bounding Boxes für jedes Dreieck *******
-	auto begin = high_resolution_clock::now();
-
-	auto end = high_resolution_clock::now();
-	//cout << "Buffer created" << ": " << duration_cast<milliseconds>(end - begin).count() << "ms" << endl;
-	begin = high_resolution_clock::now();
-
 	int xThreadGroups = (int)ceil(m_TriangleCount / 1024.0f);
 
 	deviceContext->CSSetShaderResources(0, 1, &m_Vertex_SRV);
@@ -486,9 +504,11 @@ bool CollisionDetectionManager::Frame()
 	m_curComputeShader = m_ComputeShaderVector[0];
 	deviceContext->CSSetShader(m_curComputeShader, NULL, 0);
 	deviceContext->Dispatch(xThreadGroups, 1, 1);
+}
 
-
-	// ******* 2. Berechne Bounding Box für die gesamte Szene *******
+// ******* 2. Berechne Bounding Box für die gesamte Szene *******
+void CollisionDetectionManager::_2_SceneCoundingBox()
+{
 	m_curComputeShader = m_ComputeShaderVector[1];
 	deviceContext->CSSetShader(m_curComputeShader, NULL, 0);
 
@@ -502,7 +522,7 @@ bool CollisionDetectionManager::Frame()
 	bool firstStep = true;
 	bool outputIsInput = false; // teilt den Shader mit, dass er nicht mehr aus Vertices liest und stattdessen den Output als Input benutzen soll
 
-	// Hier die einzigartige und selten gesehene do-while-Schleife:
+								// Hier die einzigartige und selten gesehene do-while-Schleife:
 	do
 	{
 		// im allerersten Durchlauf werden die Vertices als Input für die Berechnungen der Szenen-BoundingBox benutzt
@@ -531,42 +551,11 @@ bool CollisionDetectionManager::Frame()
 	} while (groupCount > 1);
 	// solange mehr als eine Gruppe gestartet werden muss, werden die Min-MaxPoints nicht auf ein Ergebnis reduziert sein,
 	// da es ja immer ein Ergebnis pro Gruppe berechnet wird
-	
-	
-	//####### Daten von der GPU kopieren #######
-	SAFEDELETEARRAY(m_Results2_1);
-	SAFEDELETEARRAY(m_Results2_2);
+}
 
-	m_Results2_1 = new Vertex[m_GroupResult_Count];
-	m_Results2_2 = new Vertex[m_GroupResult_Count];
-
-	D3D11_MAPPED_SUBRESOURCE MappedResource1 = { 0 };
-	D3D11_MAPPED_SUBRESOURCE MappedResource2 = { 0 };
-	deviceContext->CopyResource(m_Result_Buffer2_1, m_GroupMinPoint_Buffer);
-	deviceContext->CopyResource(m_Result_Buffer2_2, m_GroupMaxPoint_Buffer);
-	result = deviceContext->Map(m_Result_Buffer2_1, 0, D3D11_MAP_READ, 0, &MappedResource1);
-	result = deviceContext->Map(m_Result_Buffer2_2, 0, D3D11_MAP_READ, 0, &MappedResource2);
-
-	RETURN_FALSE_IF_FAIL(result);
-
-	_Analysis_assume_(MappedResource1.pData);
-	assert(MappedResource1.pData);
-
-	_Analysis_assume_(MappedResource2.pData);
-	assert(MappedResource2.pData);
-	// m_BoundingBoxes wird in CreateVertexAndTriangleArray neu initialisiert
-	memcpy(m_Results2_1, MappedResource1.pData, m_GroupResult_Count * sizeof(Vertex));
-	memcpy(m_Results2_2, MappedResource2.pData, m_GroupResult_Count * sizeof(Vertex));
-	deviceContext->Unmap(m_Result_Buffer2_1, 0);
-	deviceContext->Unmap(m_Result_Buffer2_2, 0);
-
-	//end = high_resolution_clock::now();
-	////cout << "Shader 1 + 2 (+ copy-back): " << duration_cast<milliseconds>(end - begin).count() << "ms" << endl;
-	//begin = high_resolution_clock::now();
-
-
-	// ******* 3. Befülle Countertrees mit den Daten für jedes Objekt *******
-
+// ******* 3. Befülle Countertrees mit den Daten für jedes Objekt *******
+void CollisionDetectionManager::_3_FillCounterTrees()
+{
 	m_curComputeShader = m_ComputeShaderVector[2];
 	deviceContext->CSSetShader(m_curComputeShader, NULL, 0);
 
@@ -574,11 +563,11 @@ bool CollisionDetectionManager::Frame()
 	deviceContext->CSSetUnorderedAccessViews(1, 1, &m_GroupMaxPoint_UAV, 0);
 	deviceContext->CSSetUnorderedAccessViews(2, 1, &m_BoundingBox_UAV, 0);
 	deviceContext->CSSetUnorderedAccessViews(3, 1, &m_CounterTrees_UAV, 0);
-	
+
 	deviceContext->CSSetShaderResources(0, 1, &m_ObjectsLastIndices_SRV);
 	deviceContext->CSSetConstantBuffers(0, 1, &m_ObjectCount_CBuffer);
 	deviceContext->CSSetConstantBuffers(1, 1, &m_TreeSizeInLevel_CBuffer);
-	xThreadGroups = (int)ceil(m_TriangleCount / 1024.0f);
+	int xThreadGroups = (int)ceil(m_TriangleCount / 1024.0f);
 	deviceContext->Dispatch(xThreadGroups, 1, 1);
 
 	// entferne die UAVs wieder von den Slots 0 - 2, damit sie wieder verwendet werden können
@@ -586,23 +575,11 @@ bool CollisionDetectionManager::Frame()
 	deviceContext->CSSetUnorderedAccessViews(1, 1, &m_NULL_UAV, 0);
 	deviceContext->CSSetUnorderedAccessViews(2, 1, &m_NULL_UAV, 0);
 	deviceContext->CSSetUnorderedAccessViews(3, 1, &m_NULL_UAV, 0);
+}
 
-	//####### Daten von der GPU kopieren #######
-	SAFEDELETEARRAY(m_Results3);
-	m_Results3 = new UINT[m_CounterTreesSize];
-	D3D11_MAPPED_SUBRESOURCE MappedResource3 = { 0 };
-	deviceContext->CopyResource(m_Result_Buffer3, m_CounterTrees_Buffer);
-	result = deviceContext->Map(m_Result_Buffer3, 0, D3D11_MAP_READ, 0, &MappedResource3);
-	RETURN_FALSE_IF_FAIL(result);
-	_Analysis_assume_(MappedResource3.pData);
-	assert(MappedResource3.pData);
-	// m_BoundingBoxes wird in CreateVertexAndTriangleArray neu initialisiert
-	memcpy(m_Results3, MappedResource3.pData, m_CounterTreesSize * sizeof(UINT));
-	deviceContext->Unmap(m_Result_Buffer3, 0);
-	//####### Daten von der GPU kopieren #######
-
-	// ******* 4.Befülle den GlobalCounterTree mit den Daten, wie viele Überschneidungstets es pro Zelle gibt *******
-
+// ******* 4.Befülle den GlobalCounterTree mit den Daten, wie viele Überschneidungstets es pro Zelle gibt *******
+void CollisionDetectionManager::_4_GlobalCounterTree()
+{
 	m_curComputeShader = m_ComputeShaderVector[3];
 	deviceContext->CSSetShader(m_curComputeShader, NULL, 0);
 
@@ -610,27 +587,15 @@ bool CollisionDetectionManager::Frame()
 	deviceContext->CSSetUnorderedAccessViews(1, 1, &m_GlobalCounterTree_UAV, 0);
 	deviceContext->CSSetConstantBuffers(0, 1, &m_ObjectCount_CBuffer);
 	deviceContext->CSSetConstantBuffers(1, 1, &m_TreeSizeInLevel_CBuffer);
-	xThreadGroups = (int)ceil(m_TreeSize / 1024.0f);
+	int xThreadGroups = (int)ceil(m_TreeSize / 1024.0f);
 	deviceContext->Dispatch(xThreadGroups, 1, 1);
 
 	deviceContext->CSSetUnorderedAccessViews(1, 1, &m_NULL_UAV, 0);
+}
 
-	//####### Daten von der GPU kopieren #######
-	SAFEDELETEARRAY(m_Results4);
-	m_Results4 = new UINT[m_TreeSize];
-	D3D11_MAPPED_SUBRESOURCE MappedResource4 = { 0 };
-	deviceContext->CopyResource(m_Result_Buffer4, m_GlobalCounterTree_Buffer);
-	 result = deviceContext->Map(m_Result_Buffer4, 0, D3D11_MAP_READ, 0, &MappedResource4);
-	RETURN_FALSE_IF_FAIL(result);
-	_Analysis_assume_(MappedResource4.pData);
-	assert(MappedResource4.pData);
-	// m_BoundingBoxes wird in CreateVertexAndTriangleArray neu initialisiert
-	memcpy(m_Results4, MappedResource4.pData, m_TreeSize * sizeof(UINT));
-	deviceContext->Unmap(m_Result_Buffer4, 0);
-	//####### Daten von der GPU kopieren #######
-
-	// ******* 5. Trage im GlobalCounterTree die Werte der optimierten Struktur ein und speichere die Struktur in TypeTree *******
-
+// ******* 5. Trage im GlobalCounterTree die Werte der optimierten Struktur ein und speichere die Struktur in TypeTree *******
+void CollisionDetectionManager::_5_FillTypeTree()
+{
 	m_curComputeShader = m_ComputeShaderVector[4];
 	deviceContext->CSSetShader(m_curComputeShader, NULL, 0);
 
@@ -645,20 +610,168 @@ bool CollisionDetectionManager::Frame()
 	curStartLevel = SUBDIVS - 1;
 	while (curStartLevel >= 0)
 	{
-		curLevelResolution = pow(8, curStartLevel); // 8 hoch den aktuellen Level ergibt die AUflösung für den Level
-		// die dritte Wurzel von der aktuellen Auflösung geteilt durch 512 ergibt die Anzahl an Gruppen die erzeugt werden müssen pro Dimension
-		_3DGroupCount = (int)ceil(pow(curLevelResolution / 512.0, 1.0 / 3.0)); 
+		curLevelResolution = pow(8, curStartLevel); // 8 hoch den aktuellen Level ergibt die Auflösung für den Level
+													// die dritte Wurzel von der aktuellen Auflösung geteilt durch 512 ergibt die Anzahl an Gruppen die erzeugt werden müssen pro Dimension
+		_3DGroupCount = (int)ceil(pow(curLevelResolution / 512.0, 1.0 / 3.0));
 
 		// Constant Buffer updaten
-		StartLevel s_StartLevel = { curStartLevel };
+		SingleUINT s_StartLevel = { curStartLevel };
 		deviceContext->UpdateSubresource(m_StartLevel_CBuffer, 0, NULL, &s_StartLevel, 0, 0);
 		deviceContext->CSSetConstantBuffers(1, 1, &m_StartLevel_CBuffer);
-		
+
 		deviceContext->Dispatch(_3DGroupCount, _3DGroupCount, _3DGroupCount);
 
 		curStartLevel -= 4; // der Shader kann mit 512 Threads / Gruppe die Eingabemenge um die Größe 4 reduzieren
 	}
+	deviceContext->CSSetUnorderedAccessViews(1, 1, &m_NULL_UAV, 0);
 
+}
+
+// ******* 6. Ziehe die Indexe der Zellen bis aufs unterste Level, die Blattzellen sind *******
+void CollisionDetectionManager::_6_FillLeafIndexTree()
+{
+	m_curComputeShader = m_ComputeShaderVector[5];
+	deviceContext->CSSetShader(m_curComputeShader, NULL, 0);
+
+	deviceContext->CSSetUnorderedAccessViews(0, 1, &m_TypeTree_UAV, 0);
+	deviceContext->CSSetUnorderedAccessViews(1, 1, &m_LeafIndexTree_UAV, 0);
+	deviceContext->CSSetConstantBuffers(0, 1, &m_TreeSizeInLevel_CBuffer);
+
+
+	int _3DGroupCount, curStartLevel, curLevelResolution, firstDispatchLoops, curLoops;
+	bool firstStep = true;
+	// berechne curLoops, für den ersten Dispatch ist das wichtig!
+	firstDispatchLoops = SUBDIVS % 4;
+	if (firstDispatchLoops == 0)
+		firstDispatchLoops = 4;
+
+	// es gibt immer einen Level mehr als SUBDIVS, also wird mit dem Index SUBDIVS auf den letzten Level zugegriffen,
+	// wir suchen den vorletzten Level, also SUBDIVS - 1!
+	curStartLevel = 0;
+	while (curStartLevel < SUBDIVS)
+	{
+		if (firstStep)
+		{
+			curLoops = firstDispatchLoops;
+			firstStep = false;
+		}
+		else
+			curLoops = 4;
+
+		// rechne curStartLevel + 4, da die Resolution benutzt wird um zu ermitteln, wie viele Threads gespawnt werden sollen
+		// es werden aber so viele Threads gebraucht, wie es Zellen im viertnächsten Level gibt
+		curLevelResolution = pow(8, curStartLevel + 4); // 8 hoch den aktuellen Level ergibt die Auflösung für den Level
+													// die dritte Wurzel von der aktuellen Auflösung geteilt durch 512 ergibt die Anzahl an Gruppen die erzeugt werden müssen pro Dimension
+		_3DGroupCount = (int)ceil(pow(curLevelResolution / 512.0, 1.0 / 3.0));
+
+		// Constant Buffer updaten
+		SingleUINT s_StartLevel = { curStartLevel };
+		SingleUINT s_Loops = { curLoops };
+		deviceContext->UpdateSubresource(m_StartLevel_CBuffer, 0, NULL, &s_StartLevel, 0, 0);
+		deviceContext->UpdateSubresource(m_Loops_CBuffer, 0, NULL, &s_Loops, 0, 0);
+		deviceContext->CSSetConstantBuffers(1, 1, &m_StartLevel_CBuffer);
+		deviceContext->CSSetConstantBuffers(2, 1, &m_Loops_CBuffer);
+
+		deviceContext->Dispatch(_3DGroupCount, _3DGroupCount, _3DGroupCount);
+
+		curStartLevel += 4; // der Shader kann mit 512 Threads / Gruppe die Eingabemenge um die Größe 4 reduzieren
+	}
+}
+
+
+
+
+// führe die Kollisionsberechnung für das aktuelle Frame durch
+void CollisionDetectionManager::Frame()
+{
+	//auto begin = high_resolution_clock::now();
+
+	//auto end = high_resolution_clock::now();
+	//cout << "Buffer created" << ": " << duration_cast<milliseconds>(end - begin).count() << "ms" << endl;
+
+	_1_BoundingBoxes();
+	//_1_BoundingBoxes_GetResult();
+
+	_2_SceneCoundingBox();
+	//_2_SceneCoundingBox_GetResult();
+
+	_3_FillCounterTrees();
+	//_3_FillCounterTrees_GetResult();
+
+	_4_GlobalCounterTree();
+	//_4_GlobalCounterTree_GetResult();
+
+	_5_FillTypeTree();
+	_5_FillTypeTree_GetResult();
+
+	_6_FillLeafIndexTree();
+	_6_FillLeafIndexTree_GetResult();
+}
+
+
+void CollisionDetectionManager::_1_BoundingBoxes_GetResult()
+{
+
+}
+
+void CollisionDetectionManager::_2_SceneCoundingBox_GetResult()
+{
+	HRESULT result;
+	SAFEDELETEARRAY(m_Results2_1);
+	SAFEDELETEARRAY(m_Results2_2);
+
+	m_Results2_1 = new Vertex[m_GroupResult_Count];
+	m_Results2_2 = new Vertex[m_GroupResult_Count];
+
+	D3D11_MAPPED_SUBRESOURCE MappedResource1 = { 0 };
+	D3D11_MAPPED_SUBRESOURCE MappedResource2 = { 0 };
+	deviceContext->CopyResource(m_Result_Buffer2_1, m_GroupMinPoint_Buffer);
+	deviceContext->CopyResource(m_Result_Buffer2_2, m_GroupMaxPoint_Buffer);
+	result = deviceContext->Map(m_Result_Buffer2_1, 0, D3D11_MAP_READ, 0, &MappedResource1);
+	result = deviceContext->Map(m_Result_Buffer2_2, 0, D3D11_MAP_READ, 0, &MappedResource2);
+
+	_Analysis_assume_(MappedResource1.pData);
+	assert(MappedResource1.pData);
+
+	_Analysis_assume_(MappedResource2.pData);
+	assert(MappedResource2.pData);
+	// m_BoundingBoxes wird in CreateVertexAndTriangleArray neu initialisiert
+	memcpy(m_Results2_1, MappedResource1.pData, m_GroupResult_Count * sizeof(Vertex));
+	memcpy(m_Results2_2, MappedResource2.pData, m_GroupResult_Count * sizeof(Vertex));
+	deviceContext->Unmap(m_Result_Buffer2_1, 0);
+	deviceContext->Unmap(m_Result_Buffer2_2, 0);
+}
+
+void CollisionDetectionManager::_3_FillCounterTrees_GetResult()
+{
+	SAFEDELETEARRAY(m_Results3);
+	m_Results3 = new UINT[m_CounterTreesSize];
+	D3D11_MAPPED_SUBRESOURCE MappedResource3 = { 0 };
+	deviceContext->CopyResource(m_Result_Buffer3, m_CounterTrees_Buffer);
+	deviceContext->Map(m_Result_Buffer3, 0, D3D11_MAP_READ, 0, &MappedResource3);
+	_Analysis_assume_(MappedResource3.pData);
+	assert(MappedResource3.pData);
+	// m_BoundingBoxes wird in CreateVertexAndTriangleArray neu initialisiert
+	memcpy(m_Results3, MappedResource3.pData, m_CounterTreesSize * sizeof(UINT));
+	deviceContext->Unmap(m_Result_Buffer3, 0);
+}
+
+void CollisionDetectionManager::_4_GlobalCounterTree_GetResult()
+{
+	SAFEDELETEARRAY(m_Results4);
+	m_Results4 = new UINT[m_TreeSize];
+	D3D11_MAPPED_SUBRESOURCE MappedResource4 = { 0 };
+	deviceContext->CopyResource(m_Result_Buffer4, m_GlobalCounterTree_Buffer);
+	deviceContext->Map(m_Result_Buffer4, 0, D3D11_MAP_READ, 0, &MappedResource4);
+	_Analysis_assume_(MappedResource4.pData);
+	assert(MappedResource4.pData);
+	// m_BoundingBoxes wird in CreateVertexAndTriangleArray neu initialisiert
+	memcpy(m_Results4, MappedResource4.pData, m_TreeSize * sizeof(UINT));
+	deviceContext->Unmap(m_Result_Buffer4, 0);
+}
+
+void CollisionDetectionManager::_5_FillTypeTree_GetResult()
+{
 	SAFEDELETEARRAY(m_Results5_1);
 	SAFEDELETEARRAY(m_Results5_2);
 
@@ -669,10 +782,8 @@ bool CollisionDetectionManager::Frame()
 	D3D11_MAPPED_SUBRESOURCE MappedResource5_2 = { 0 };
 	deviceContext->CopyResource(m_Result_Buffer5_1, m_GlobalCounterTree_Buffer);
 	deviceContext->CopyResource(m_Result_Buffer5_2, m_TypeTree_Buffer);
-	result = deviceContext->Map(m_Result_Buffer5_1, 0, D3D11_MAP_READ, 0, &MappedResource5_1);
-	result = deviceContext->Map(m_Result_Buffer5_2, 0, D3D11_MAP_READ, 0, &MappedResource5_2);
-
-	RETURN_FALSE_IF_FAIL(result);
+	deviceContext->Map(m_Result_Buffer5_1, 0, D3D11_MAP_READ, 0, &MappedResource5_1);
+	deviceContext->Map(m_Result_Buffer5_2, 0, D3D11_MAP_READ, 0, &MappedResource5_2);
 
 	_Analysis_assume_(MappedResource5_1.pData);
 	assert(MappedResource5_1.pData);
@@ -684,6 +795,23 @@ bool CollisionDetectionManager::Frame()
 	memcpy(m_Results5_2, MappedResource5_2.pData, m_TreeSize * sizeof(UINT));
 	deviceContext->Unmap(m_Result_Buffer5_1, 0);
 	deviceContext->Unmap(m_Result_Buffer5_2, 0);
+}
 
-	return true;
+void CollisionDetectionManager::_6_FillLeafIndexTree_GetResult()
+{
+	SAFEDELETEARRAY(m_Results6);
+
+	m_Results6 = new UINT[m_TreeSize];
+
+	D3D11_MAPPED_SUBRESOURCE MappedResource6 = { 0 };
+	deviceContext->CopyResource(m_Result_Buffer6, m_LeafIndexTree_Buffer);
+	deviceContext->Map(m_Result_Buffer6, 0, D3D11_MAP_READ, 0, &MappedResource6);
+
+	_Analysis_assume_(MappedResource6.pData);
+	assert(MappedResource6.pData);
+
+	_Analysis_assume_(MappedResource6.pData);
+	assert(MappedResource6.pData);
+	memcpy(m_Results6, MappedResource6.pData, m_TreeSize * sizeof(UINT));
+	deviceContext->Unmap(m_Result_Buffer6, 0);
 }

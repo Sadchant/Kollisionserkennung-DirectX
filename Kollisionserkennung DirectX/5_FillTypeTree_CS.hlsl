@@ -8,7 +8,7 @@ cbuffer TreeSizeInLevels : register(b0)
     uint4 treeSizeInLevels[SUBDIVS + 1];
 };
 cbuffer StartLevel : register(b1)
-{ // nur die erste Stelle von den uint4 lesen!
+{
     uint startLevel; // bei welchem Level startet die for-Schleife?
 };
 

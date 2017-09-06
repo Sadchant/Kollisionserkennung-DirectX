@@ -154,6 +154,7 @@
     <None Include="3_FillCounterTrees_CS.hlsl" />
     <None Include="4_GlobalCounterTree_CS.hlsl" />
     <None Include="5_FillTypeTree_CS.hlsl" />
+    <None Include="6_FillLeafIndexTree_CS.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Kollisionserkennung DirectX.rc">
