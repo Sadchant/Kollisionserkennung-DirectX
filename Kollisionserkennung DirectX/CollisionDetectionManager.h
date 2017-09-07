@@ -49,6 +49,7 @@ private:
 	{
 		UINT cellID;
 		UINT triangleID;
+		UINT objectID;
 	};
 
 	__declspec(align(16)) // Structs in einem ConstantBuffer müpssen auf 16 Byte aligned sein
@@ -142,6 +143,7 @@ private:
 	UINT* m_Results5_1; // wird von der GPU befüllt!
 	UINT* m_Results5_2; // wird von der GPU befüllt!
 	UINT* m_Results6; // wird von der GPU befüllt!
+	CellTrianglePair* m_Results7; // wird von der GPU befüllt!
 
 	// langsame (CPU-Zugriff!) ResultBuffer, in die ein Ergebnis von der GPU kopiert wird
 	ID3D11Buffer* m_Result_Buffer1;
@@ -152,6 +154,7 @@ private:
 	ID3D11Buffer* m_Result_Buffer5_1;
 	ID3D11Buffer* m_Result_Buffer5_2;
 	ID3D11Buffer* m_Result_Buffer6;
+	ID3D11Buffer* m_Result_Buffer7;
 
 
 
@@ -170,6 +173,7 @@ private:
 	ID3D11UnorderedAccessView* m_GlobalCounterTree_UAV;
 	ID3D11UnorderedAccessView* m_TypeTree_UAV;
 	ID3D11UnorderedAccessView* m_LeafIndexTree_UAV;
+	ID3D11UnorderedAccessView* m_CellTrianglePairs_UAV;
 
 };
 

@@ -1,7 +1,7 @@
 #include "HlslSharedDefines.h"
 #include "0_ComputeShaderGlobals.hlsl"
 
-// Könnte man hier auch als read-only einlesen!
+// Könnte man hier auch als read-only einlesen, Buffer wurde an anderer Stelle aber schon als Write gesetzt, macht performancetechnisch keinen Unterschied!
 RWStructuredBuffer<float3> sceneMinPoints : register(u0); // nur von Stelle 0 lesen, da steht der MinPoint der Szene!
 RWStructuredBuffer<float3> sceneMaxPoints : register(u1); // nur von Stelle 1 lesen, da steht der MaxPoint der Szene!
 RWStructuredBuffer<BoundingBox> boundingBoxBuffer : register(u2);
@@ -71,6 +71,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
         uint3 curBBMinGridPosition; // die 3D-ID der Gridzelle, in der der MinPoint der aktuell bearbeiteten Bounding Box liegt 
         uint3 curBBMaxGridPosition; // die 3D-ID der Gridzelle, in der der MaxPoint der aktuell bearbeiteten Bounding Box liegt 
         // gehe über alle Dimensionen
+        [unroll] // da man auf float3 eigentlich nicht mit [v] zugreifen kann, unrolle die for-schleife um compiler-Warnung zu vermeiden
         for (int v = 0; v < 3; v++)
         {
             // ermittle die Gridzellen, in denen die beiden Positionen der aktuell bearbeiteten Bonding Box liegen, indem die Positionen der BoundingBox
