@@ -37,8 +37,12 @@ void main(uint3 DTid : SV_DispatchThreadID)
         {
             uint3 curParent3DID = DTid / threadAliveNumber; // die 3D-ID der Elternzelle, die aktuell bearbeitet wird
             uint curParentRes = pow(2, curLevel); // die Auflösung des Levels, in der der die aktuell bearbeitete Elternzelle liegt
-            uint curOffset = treeSizeInLevels[curLevel - 1].x; // der Offset wird mit dem aktuellen Level aus treeSizeInLevels geholt (treeSizeInLevels[curLevel-1] beinhaltet die Größe des Baums bis zum aktuellen Level)
-            uint curParent1DID = get1DID(curParent3DID.x, curParent3DID.y, curParent3DID.z, curParentRes, curOffset); // mit der 1D-ID kann auf die Buffer zugegriffen werden, die linear aufgebaut sind
+            uint curOffset;
+            if (curLevel == 0) // damit nicht auf treeSizeInLevels[-1] zugegriffen wird
+                curOffset = 0;
+            else // der Offset wird mit dem aktuellen Level aus treeSizeInLevels geholt (treeSizeInLevels[curLevel-1] beinhaltet die Größe des Baums bis zum aktuellen Level)
+                curOffset = treeSizeInLevels[curLevel - 1].x;
+            uint curParent1DID = get1DID(curParent3DID, curParentRes, curOffset); // mit der 1D-ID kann auf die Buffer zugegriffen werden, die linear aufgebaut sind
             uint curParentCount = globalCounterTree[curParent1DID]; // die Anzahl an ÜberschneidungsTests für die aktelle Zelle
             uint curChildsCount = 0; // die Anzahl an Überschneidungstests für die 8 Kind-Zellen
             uint3 bottomLeftChildID = curParent3DID * 2; // die ID der KindZelle- die räumlich gesehen unten links vorne in der Elternzelle liegt
@@ -52,7 +56,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
                     for (uint z = 0; z < 2; z++) // laufe über alle Dimensionen und berechne die Vektoren, die ausgehend von der Zelle unten links alle Kindzellen abdecken
                     {
                         uint3 curChild3DID = bottomLeftChildID + uint3(x, y, z); // berechne die aktuelle Kind-3D-ID aus der ID unten links und dem aktuellen Richtungs-Vektor
-                        uint curChild1DID = get1DID(curChild3DID.x, curChild3DID.y, curChild3DID.z, curChildRes, curChildOffset); // berechne die aktuelle Kind-1D-ID
+                        uint curChild1DID = get1DID(curChild3DID, curChildRes, curChildOffset); // berechne die aktuelle Kind-1D-ID
                         curChilds1DIDs[x * 4 + y * 2 + z] = curChild1DID; // merke dir die aktuelle ID in curChilds1DIDs
                         curChildsCount += globalCounterTree[curChild1DID]; // zähle alle Kind-Werte zusammen, das Ergebnis steht am Ende in curChildsCount
                     }

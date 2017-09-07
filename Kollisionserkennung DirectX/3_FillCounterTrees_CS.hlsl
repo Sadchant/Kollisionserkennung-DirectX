@@ -60,26 +60,25 @@ void main(uint3 DTid : SV_DispatchThreadID)
     //uint maxRes = (uint)pow(8, SUBDIVS);
     //pow(2^x, y) = 1 << x * y
 
-
-    // iteriere über alle Level im Tree, <= weil: Bei LEVEL = 1 gibt es ja eine Unterteilung, also zwei unterschiedliche Level
+    // iteriere über alle Level im Tree, <= weil: Bei SUBDIVS = 1 gibt es eine Unterteilung, also zwei unterschiedliche Level
     for (int level = 0; level <= SUBDIVS; level++)
     {
         uint curRes = pow(2, level); // wie viele Gridzellen gibt es im Level pro Dimension, dass die for-Schleife gerade bearbeitet, 2: Auflösung pro Dimension, 8 wäre Anzahl der Zellen im 3D-Raum
         // curScale: um welchen Wert müssen Koordinaten in der Szene skaliert werden, damit bei der aktuellen Auflösung die Gridzellen in jeder Dimension auf
         // den Koordinaten (pro Dimension) 0, 1, 2, 3, 4 anfangen und nicht bei Kommazahlen oder Ganzzahlen, die weiter auseinander liegen als 1
-        float3 curScale = { curRes / sceneBoundingBoxVolumeVector.x, curRes / sceneBoundingBoxVolumeVector.y, curRes / sceneBoundingBoxVolumeVector.z };
+        uint curOffset; // Wieviel Platz im 1D-Array wird duch die vorangegangenen Level belegt?
+        if (level == 0)
+            curOffset = 0;
+        else
+            curOffset = treeSizeInLevel[level - 1].x;
+        float3 curScale = curRes / sceneBoundingBoxVolumeVector;
         uint3 curBBMinGridPosition; // die 3D-ID der Gridzelle, in der der MinPoint der aktuell bearbeiteten Bounding Box liegt 
         uint3 curBBMaxGridPosition; // die 3D-ID der Gridzelle, in der der MaxPoint der aktuell bearbeiteten Bounding Box liegt 
-        // gehe über alle Dimensionen
-        [unroll] // da man auf float3 eigentlich nicht mit [v] zugreifen kann, unrolle die for-schleife um compiler-Warnung zu vermeiden
-        for (int v = 0; v < 3; v++)
-        {
-            // ermittle die Gridzellen, in denen die beiden Positionen der aktuell bearbeiteten Bonding Box liegen, indem die Positionen der BoundingBox
-            // in das "normalisierte" (Gridzellen fangen bei 0, 1, 2, 3 an) Grid projezert wird
-            // mit floor wird dann die Position, die ja dann ein float ist, in eine 3D-ID im Grid umgewandelt
-            curBBMinGridPosition[v] = (uint) floor((curBoundingBox.minPoint[v] - sceneBoundingBox.minPoint[v]) * curScale[v]);
-            curBBMaxGridPosition[v] = (uint) floor((curBoundingBox.maxPoint[v] - sceneBoundingBox.minPoint[v]) * curScale[v]);
-        }
+        // ermittle die Gridzellen, in denen die beiden Positionen der aktuell bearbeiteten Bonding Box liegen, indem die Positionen der BoundingBox
+        // in das "normalisierte" (Gridzellen fangen bei 0, 1, 2, 3 an) Grid projezert wird
+        // mit floor wird dann die Position, die ja dann ein float ist, in eine 3D-ID im Grid umgewandelt
+        curBBMinGridPosition = (uint3) floor((curBoundingBox.minPoint - sceneBoundingBox.minPoint) * curScale);
+        curBBMaxGridPosition = (uint3) floor((curBoundingBox.maxPoint - sceneBoundingBox.minPoint) * curScale);
         // gibt an, wie viele Gridzellen in jeder Dimension von der BoundingBox überdeckt werden
         uint3 overlapRange = curBBMaxGridPosition - curBBMinGridPosition;
 
@@ -93,12 +92,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
                 {
                     uint3 curOverlapOffset = { x, y, z };
                     uint3 cur3DID = curBBMinGridPosition + curOverlapOffset; // rechne die 3D-Position im Grid an der aktuellen Overlap-Stelle aus
-                    uint curOffset; // Wieviel Platz im 1D-Array wird duch die vorangegangenen Level belegt?
-                    if (level == 0)
-                        curOffset = 0;
-                    else
-                        curOffset = treeSizeInLevel[level - 1].x;
-                    uint cur1ID = get1DID(cur3DID.x, cur3DID.y, cur3DID.z, curRes, curOffset);
+                    uint cur1ID = get1DID(cur3DID, curRes, curOffset);
                     // offset = treeSizeInLevel[i - 1], weil in treeSizeInLevel[i] auch die Größe des aktuellen Levels steht, die aber nicht zum offset gehört
                     // Zwei Threads sollten nicht gleichzeitig in eine Gridzelle schreiben, also erhöhe den Counter atomar
                     InterlockedAdd(counterTrees[objectOffset + cur1ID], 1);

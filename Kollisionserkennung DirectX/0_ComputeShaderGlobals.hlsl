@@ -4,10 +4,17 @@ struct BoundingBox
     float3 maxPoint;
 };
 
-// berechne aus 3D-Koordinaten, der aktuellen Größe des Grids und dem Level-Offset die 1-dimensionale ID
-uint get1DID(uint x, uint y, uint z, uint resolution, uint offset)
+struct CellTrianglePair
 {
-    return x + y * resolution + z * resolution * resolution + offset;
+    uint cellID;
+    uint triangleID;
+    uint objectID;
+};
+
+// berechne aus 3D-Koordinaten, der aktuellen Größe des Grids und dem Level-Offset die 1-dimensionale ID
+uint get1DID(uint3 cell3DID, uint resolution, uint offset)
+{
+    return cell3DID.x + cell3DID.y * resolution + cell3DID.z * resolution * resolution + offset;
 }
 
 #define EMPTY 0

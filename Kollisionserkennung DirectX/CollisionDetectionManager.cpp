@@ -802,30 +802,30 @@ void CollisionDetectionManager::_5_FillTypeTree_GetResult()
 	deviceContext->Unmap(m_Result_Buffer5_1, 0);
 	deviceContext->Unmap(m_Result_Buffer5_2, 0);
 
-	//int leafCountperLevel[SUBDIVS+1] = { 0 };
-	//for (int i = 0; i < m_TreeSizeInLevel[SUBDIVS]; i++)
-	//{
-	//	if (m_Results5_2[i] == 2)
-	//	{
-	//		for (int j = 0; j < SUBDIVS+1; j++)
-	//		{
-	//			/*if (i >= 37449) 
-	//				cout << i << " " ;*/
-	//			if (i < m_TreeSizeInLevel[j]) // guck in welchem level hochgezählt werden muss
-	//			{
-	//				leafCountperLevel[j] += 1;
-	//				if (j == 6)
-	//					cout << i << endl;
-	//				break;
-	//			}
-	//		}
-	//	}
-	//}
-	//for (int j = 0; j < SUBDIVS+1; j++)
-	//{
-	//	cout << j << ": " << leafCountperLevel[j] << endl;
-	//}
-	//cout << "fertig" << endl;
+	int leafCountperLevel[SUBDIVS+1] = { 0 };
+	for (int i = 0; i < m_TreeSizeInLevel[SUBDIVS]; i++)
+	{
+		if (m_Results5_2[i] == 2)
+		{
+			for (int j = 0; j < SUBDIVS+1; j++)
+			{
+				/*if (i >= 37449) 
+					cout << i << " " ;*/
+				if (i < m_TreeSizeInLevel[j]) // guck in welchem level hochgezählt werden muss
+				{
+					leafCountperLevel[j] += 1;
+					if (j == 6)
+						cout << i << endl;
+					break;
+				}
+			}
+		}
+	}
+	for (int j = 0; j < SUBDIVS+1; j++)
+	{
+		cout << j << ": " << leafCountperLevel[j] << endl;
+	}
+	cout << "fertig" << endl;
 }
 
 void CollisionDetectionManager::_6_FillLeafIndexTree_GetResult()
@@ -846,7 +846,7 @@ void CollisionDetectionManager::_6_FillLeafIndexTree_GetResult()
 	memcpy(m_Results6, MappedResource6.pData, m_TreeSize * sizeof(UINT));
 	deviceContext->Unmap(m_Result_Buffer6, 0);
 
-	/*int counter = 0;
+	int counter = 0;
 	for (int i = 0; i < m_TreeSizeInLevel[SUBDIVS]; i++)
 	{
 		if (m_Results6[i] >= 37449)
@@ -856,5 +856,5 @@ void CollisionDetectionManager::_6_FillLeafIndexTree_GetResult()
 		}
 			
 	}
-	cout << "counter:" << counter << endl;*/
+	cout << "counter:" << counter << endl;
 }

@@ -33,8 +33,12 @@ void main( uint3 DTid : SV_DispatchThreadID )
         {
             uint3 curParent3DID = DTid / threadAliveNumber; // die 3D-ID im Grid der aktuell bearbeiteten Zelle
             uint curParentRes = pow(2, curLevel); // die Auflösung des gerade bearbeiteten Levels
-            uint curParentOffset = treeSizeInLevels[curLevel - 1]; // das Offset im Aktuell bearbeiteten Level um die 1D-ID zu berechnen
-            uint curParent1DID = get1DID(curParent3DID.x, curParent3DID.y, curParent3DID.z, curParentRes, curParentOffset); //berechne die ID-ID
+            uint curParentOffset;
+            if (curLevel == 0) // damit nicht auf treeSizeInLevels[-1] zugegriffen wird
+                curParentOffset = 0;
+            else
+                curParentOffset = treeSizeInLevels[curLevel - 1]; // das Offset im Aktuell bearbeiteten Level um die 1D-ID zu berechnen
+            uint curParent1DID = get1DID(curParent3DID, curParentRes, curParentOffset); //berechne die ID-ID
             uint curParentType = typeTree[curParent1DID]; // hole den Typ der Elternzelle
             uint curParentLeafIndex = leafIndexTree[curParent1DID];
 
@@ -49,7 +53,7 @@ void main( uint3 DTid : SV_DispatchThreadID )
                     for (uint z = 0; z < 2; z++) // laufe über alle Dimensionen und berechne die Vektoren, die ausgehend von der Zelle unten links alle Kindzellen abdecken
                     {
                         uint3 curChild3DID = bottomLeftChildID + uint3(x, y, z); // berechne die aktuelle Kind-3D-ID aus der ID unten links und dem aktuellen Richtungs-Vektor
-                        uint curChild1DID = get1DID(curChild3DID.x, curChild3DID.y, curChild3DID.z, curChildsRes, curChildsOffset); // berechne die aktuelle Kind-1D-ID
+                        uint curChild1DID = get1DID(curChild3DID, curChildsRes, curChildsOffset); // berechne die aktuelle Kind-1D-ID
                         if (curParentType == LEAF) // sollte die Elternzelle ein Blatt sein
                             leafIndexTree[curChild1DID] = curParent1DID; // trage im LeafIndexTree in alle Kindzellen den Index der ELtern-ID ein
                         else if (curParentType == EMPTY) // sollte die ELternzelle leer sein, muss es in einem höhren Level schon ein Blatt gegeben haben
