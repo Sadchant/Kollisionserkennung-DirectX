@@ -62,9 +62,8 @@ void main(uint3 DTid : SV_DispatchThreadID)
                     }
                 }
             }
-            
             if (curChildsCount < curParentCount) // wenn die aufaddierten Kind-Werte kleiner sind als der Eltern-Wert:
-            {             
+            {     
                 globalCounterTree[curParent1DID] = curChildsCount; // im Countertree die Elternzelle mit dem geringeren Wert belegen
                 
                 typeTree[curParent1DID] = INTERNAL; // die Kindzellen bleiben bestehen, also ist die ELternzelle intern
@@ -79,7 +78,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
                 typeTree[curParent1DID] = LEAF; // markiere die Eltern-Zelle als Blatt
                 for (uint c = 0; c < 8; c++) // die Kindzellen sind leer, da der Baum bei ihrer Elternzelle endet
                 {
-                    typeTree[curChilds1DIDs[c]] = EMPTY;
+                    typeTree[curChilds1DIDs[c]] = EMPTY;                    
                 }
             }
         }

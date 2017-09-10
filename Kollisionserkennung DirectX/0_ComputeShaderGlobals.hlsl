@@ -20,4 +20,5 @@ uint get1DID(uint3 cell3DID, uint resolution, uint offset)
 #define EMPTY 0
 #define INTERNAL 1
 #define LEAF 2
+#define COPYDOWN 9
 

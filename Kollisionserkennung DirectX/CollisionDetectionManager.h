@@ -86,6 +86,7 @@ private:
 	void _4_GlobalCounterTree();
 	void _5_FillTypeTree();
 	void _6_FillLeafIndexTree();
+	void _7_CellTrianglePairs();
 
 	void _1_BoundingBoxes_GetResult();
 	void _2_SceneCoundingBox_GetResult();
@@ -93,6 +94,7 @@ private:
 	void _4_GlobalCounterTree_GetResult();
 	void _5_FillTypeTree_GetResult();
 	void _6_FillLeafIndexTree_GetResult();
+	void _7_CellTrianglePairs_GetResult();
 
 	ID3D11Device* device;
 	ID3D11DeviceContext* deviceContext;
@@ -162,13 +164,13 @@ private:
 	ID3D11ShaderResourceView* m_NULL_SRV;
 	ID3D11UnorderedAccessView* m_NULL_UAV;
 
-	ID3D11ShaderResourceView* m_Vertex_SRV;
-	ID3D11ShaderResourceView* m_Triangle_SRV;
+	ID3D11ShaderResourceView* m_Vertices_SRV;
+	ID3D11ShaderResourceView* m_Triangles_SRV;
 	ID3D11ShaderResourceView* m_ObjectsLastIndices_SRV;
 
-	ID3D11UnorderedAccessView* m_BoundingBox_UAV;
-	ID3D11UnorderedAccessView* m_GroupMinPoint_UAV;
-	ID3D11UnorderedAccessView* m_GroupMaxPoint_UAV;
+	ID3D11UnorderedAccessView* m_BoundingBoxes_UAV;
+	ID3D11UnorderedAccessView* m_GroupMinPoints_UAV;
+	ID3D11UnorderedAccessView* m_GroupMaxPoints_UAV;
 	ID3D11UnorderedAccessView* m_CounterTrees_UAV;
 	ID3D11UnorderedAccessView* m_GlobalCounterTree_UAV;
 	ID3D11UnorderedAccessView* m_TypeTree_UAV;

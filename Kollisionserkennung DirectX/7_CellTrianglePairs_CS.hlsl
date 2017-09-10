@@ -22,7 +22,7 @@ cbuffer TreeSizeInLevel : register(b1)
 
 
 [numthreads(_7_CELLTRIANGLEPAIRS_XTHREADS, _7_CELLTRIANGLEPAIRS_YTHREADS, _7_CELLTRIANGLEPAIRS_ZTHREADS)]
-void main( uint3 DTid : SV_DispatchThreadID )
+void main(uint3 DTid : SV_DispatchThreadID)
 {
     uint id = DTid.x;
     // obligatorische Überprüfung für den Block, der "zu wenig" zu tun hat
@@ -68,7 +68,7 @@ void main( uint3 DTid : SV_DispatchThreadID )
     // gibt an, wie viele Gridzellen in jeder Dimension von der BoundingBox überdeckt werden
     uint3 overlapRange = curBBMaxGridPosition - curBBMinGridPosition;
     // laufe über alle Gridzellen, die von curBoundingBox überlappt werden und erhöhe in Ihnen den trieangle-Count um 1
-        // warum <=? Weil bei overlapRange = 0 trotzdem einmal in die for-Schleifen gegangen werden soll für die Zelle, in der der MinPoint der curBoundingBox liegt
+    // warum <=? Weil bei overlapRange = 0 trotzdem einmal in die for-Schleifen gegangen werden soll für die Zelle, in der der MinPoint der curBoundingBox liegt
     for (uint x = 0; x <= overlapRange.x; x++)
     {
         for (uint y = 0; y <= overlapRange.y; y++)

@@ -15,7 +15,7 @@
 
 using namespace std;
 
-const bool LARGESCENE = true;
+const bool LARGESCENE = false;
 
 const bool FULL_SCREEN = false;
 const bool VSYNC_ENABLED = false;

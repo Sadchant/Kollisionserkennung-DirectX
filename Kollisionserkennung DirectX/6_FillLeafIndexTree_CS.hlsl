@@ -55,14 +55,21 @@ void main( uint3 DTid : SV_DispatchThreadID )
                         uint3 curChild3DID = bottomLeftChildID + uint3(x, y, z); // berechne die aktuelle Kind-3D-ID aus der ID unten links und dem aktuellen Richtungs-Vektor
                         uint curChild1DID = get1DID(curChild3DID, curChildsRes, curChildsOffset); // berechne die aktuelle Kind-1D-ID
                         if (curParentType == LEAF) // sollte die Elternzelle ein Blatt sein
+                        {
                             leafIndexTree[curChild1DID] = curParent1DID; // trage im LeafIndexTree in alle Kindzellen den Index der ELtern-ID ein
-                        else if (curParentType == EMPTY) // sollte die ELternzelle leer sein, muss es in einem höhren Level schon ein Blatt gegeben haben
+                            typeTree[curChild1DID] = COPYDOWN; // markiere in der Kindzelle, dass das Blatt gefunden wurde und sie nach unten kopieren muss
+
+                        }
+                        else if ((curParentType == COPYDOWN) || (curParentType == EMPTY)) // sollte die ELternzelle leer sein oder als COPYDOWN markiert, muss es in einem höhren Level schon ein Blatt gegeben haben
+                        {
                             leafIndexTree[curChild1DID] = curParentLeafIndex; // als kopiere den Wert aus leafIndexTree der Elternzelle auf die Kindzellen
+                            typeTree[curChild1DID] = COPYDOWN; // markiere in der Kindzelle, dass das Blatt schon gefunden wurde und sie nach unten kopieren muss
+                        }
                         else // ansonsten muss es eine interne Zelle sein, die Kinder können! also Blätter sein
                             leafIndexTree[curChild1DID] = curChild1DID; // trage jedes Mal die Child-IDs ein, sollten die Kinder auch intern sein ist es zwar überflüssig, 
                                                                         // schadet aber auch nicht und es entsteht weniger Threaddivergenz, da die if-Abfrage weggelassen wird
+                        }
                     }
-                }
             }
         }
         AllMemoryBarrierWithGroupSync(); // warte darauf, dass alle Gruppen in diesem Level fertig sind, da der nächste Durchlauf Ergebnisse aus anderen Threads verarbeitet

@@ -155,13 +155,11 @@
     <None Include="4_GlobalCounterTree_CS.hlsl" />
     <None Include="5_FillTypeTree_CS.hlsl" />
     <None Include="6_FillLeafIndexTree_CS.hlsl" />
+    <None Include="7_CellTrianglePairs_CS.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Kollisionserkennung DirectX.rc">
       <Filter>Resource Files</Filter>
     </ResourceCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <FxCompile Include="7_CellTrianglePairs_CS.hlsl" />
   </ItemGroup>
 </Project>
