@@ -2,12 +2,12 @@
 #include "0_ComputeShaderGlobals.hlsl"
 
 RWStructuredBuffer<BoundingBox> boundingBoxes : register(u0);
-RWStructuredBuffer<float3> sceneMinPoints : register(u1);
-RWStructuredBuffer<float3> sceneMaxPoints : register(u2);
+RWStructuredBuffer<float3> sceneMinPoints : register(u1); // an Stelle 0 steht der kleinste Punkt der Szene
+RWStructuredBuffer<float3> sceneMaxPoints : register(u2); // an Stelle 0 steht der größte Punkt der Szene
 RWStructuredBuffer<uint> globalCounterTree : register(u3);
 RWStructuredBuffer<uint> leafIndexTree : register(u4);
 
-AppendStructuredBuffer<CellTrianglePair> cellTrianglePairs : register(u5);
+RWStructuredBuffer<CellTrianglePair> cellTrianglePairs : register(u5);
 
 StructuredBuffer<uint> objectsLastIndices : register(t0);
 
@@ -20,7 +20,13 @@ cbuffer TreeSizeInLevel : register(b1)
     uint4 treeSizeInLevel[SUBDIVS + 1]; // lese also nur von x! 
 };
 
-
+// Gehe für jede Bounding Box wie in _3_FillCounterTrees über alle Zellen, die von ihr überlappt werden, diesmal aber
+// nur im untersten Level. Dann werden Cell-Triangle-Pairs mit Hilfe des LeafIndex-Trees (also die CellIDs der optimierten 
+// Struktur) erzeugt und im Cell-Triangle-AppendBuffer hinzugefügt. Damit keine doppelten Einträge gemacht werden
+// (was passiert wenn eine Bounding Box viele Zellen auf dem untersten Level überdeckt, die alle zum selben Blatt gehören
+// und im leafIndexTree die gleiche Id haben), überprüfe, wenn die aktuell bearbeitete Zelle nicht am jeweiligen Rand liegt,
+// ob die letzte Zelle in x-, y-, oder z- Richtung die selbe ID hat. Wenn ja wurde sie schon bearbeitet und der Eintrag 
+// existiert schon.
 [numthreads(_7_CELLTRIANGLEPAIRS_XTHREADS, _7_CELLTRIANGLEPAIRS_YTHREADS, _7_CELLTRIANGLEPAIRS_ZTHREADS)]
 void main(uint3 DTid : SV_DispatchThreadID)
 {
@@ -78,30 +84,35 @@ void main(uint3 DTid : SV_DispatchThreadID)
                 uint3 curOverlapOffset = { x, y, z };
                 uint3 cur3DID = curBBMinGridPosition + curOverlapOffset; // rechne die 3D-Position im Grid an der aktuellen Overlap-Stelle aus
                 uint cur1ID = get1DID(cur3DID, resolution, offset);
-                uint curLeafID = leafIndexTree[cur1ID];
+                uint curLeafID = leafIndexTree[cur1ID]; // merke dir die aktuelle Leaf-ID
                 if (globalCounterTree[curLeafID] > 0)
                 {
+                    // gehe jeweils über die 3 Achsen x, y, z und prüfe, ob das gefundene Grid-Triangle-Pair schon eingetragen wurde
                     bool isAlreadyListed = false;
-                    for (uint axis = 0; axis < 3; axis++)
+                    // könnte man leichter verständlich für y, y und z auch hintereinander schreiben, hier die "elegante" Variante in einer for-Schleife
+                    [unroll] // da vector3[x] Compiler-Warnungen erzeugt, unrolle die for-Schleife
+                    for (uint axis = 0; axis < 3; axis++) // gehe über die 3 Achsen x, y, z (jede hat in jeweils einem Durchlauf den Wert 1, die anderen sind 0) 
                     {
+                        // checke das letzte Feld nur, wenn es auch innerhalb der overlap-Range ist (ist es ab dem Zeitpunkt, in x-Richtung, wenn x größer als 1 ist, in y-Richtung, wenn ... usw.
                         if ((axis == 0 && x > 0) || (axis == 1 && y > 0) || (axis == 2 && z > 0))
                         {
-                            uint3 checkInThisDirectionVector = { 0, 0, 0 };
+                            uint3 checkInThisDirectionVector = { 0, 0, 0 }; // jeweils einer wird im nächsten Schritt auf 1 gesetzt
                             checkInThisDirectionVector[axis] = 1;
-                            uint3 checkedCell3DID = cur3DID - checkInThisDirectionVector;
-                            uint checkedCell1DID = get1DID(checkedCell3DID, resolution, offset);
-                            uint checkedCellLeafID = leafIndexTree[checkedCell1DID];
-                            if (curLeafID == checkedCellLeafID)
+                            uint3 checkedCell3DID = cur3DID - checkInThisDirectionVector; // gehe ein Feld zurück in der jeweiligen Achse
+                            uint checkedCell1DID = get1DID(checkedCell3DID, resolution, offset); // berechne die 1D-ID
+                            uint checkedCellLeafID = leafIndexTree[checkedCell1DID]; // hole den LeafIndex
+                            if (curLeafID == checkedCellLeafID) // sollte der Leaf-Index gleich sein, wurde das aktuelle Cell-Triangle-Pair schon eingetragen
                             {
-                                isAlreadyListed = true;
-                                break;
+                                isAlreadyListed = true; // merke, dass das aktuelle Grid-Triangle-Paar schon eingetragen wurde
+                                break; // die anderen Dimensionen brauchen nicht mehr überprüft zu werden
                             }
                         }
                     }
-                    if (!isAlreadyListed)
+                    if (!isAlreadyListed) // trage nur eine neue Zelle ein, wenn sie noch nicht eingetragen wurde
                     {
-                        CellTrianglePair newPair = { curLeafID, id, objectID };
-                        cellTrianglePairs.Append(newPair);
+                        CellTrianglePair newPair = { curLeafID, id, objectID }; // baue das Cell-Triangle-Paar zusammen (objectID ist später beim Kollisionen suchen wichtig!)
+                        uint curCount = cellTrianglePairs.IncrementCounter();
+                        cellTrianglePairs[curCount] = newPair; // die Paare kommen zunächst ungeordnet in den CellTrianglePair-Buffer
                     }
                 }
             }

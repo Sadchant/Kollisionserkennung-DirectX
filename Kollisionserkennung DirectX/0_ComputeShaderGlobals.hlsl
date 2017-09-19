@@ -11,6 +11,11 @@ struct CellTrianglePair
     uint objectID;
 };
 
+struct SortIndices
+{
+    uint array[4];
+};
+
 // berechne aus 3D-Koordinaten, der aktuellen Größe des Grids und dem Level-Offset die 1-dimensionale ID
 uint get1DID(uint3 cell3DID, uint resolution, uint offset)
 {
@@ -20,5 +25,4 @@ uint get1DID(uint3 cell3DID, uint resolution, uint offset)
 #define EMPTY 0
 #define INTERNAL 1
 #define LEAF 2
-#define COPYDOWN 9
 

@@ -24,7 +24,7 @@ cbuffer Loops : register(b2)
 void main( uint3 DTid : SV_DispatchThreadID )
 {
     uint curLevel = startLevel; // setzte das aktuelle Level
-    for (int i = 0; i < loops; i++) // funktioniert ähnlich wie in 5_FillTypeTree_CS, aber läuft diesmal von 0 - X und nicht von X - 0, zudem kein <=, da andersrum gezählt wird und die cpu die anzahl der durchläufe übergibt
+    for (uint i = 0; i < loops; i++) // funktioniert ähnlich wie in 5_FillTypeTree_CS, aber läuft diesmal von 0 - X und nicht von X - 0, zudem kein <=, da andersrum gezählt wird und die cpu die anzahl der durchläufe übergibt
     {
         uint threadAliveNumber = pow(2, 3 - i); // aus 5_FillTypeTree_CS bekannter Wert, der entscheidet welche Threads laufen und welche ID bearbeitet wird
         if ((DTid.x % threadAliveNumber == 0) &&
@@ -37,14 +37,14 @@ void main( uint3 DTid : SV_DispatchThreadID )
             if (curLevel == 0) // damit nicht auf treeSizeInLevels[-1] zugegriffen wird
                 curParentOffset = 0;
             else
-                curParentOffset = treeSizeInLevels[curLevel - 1]; // das Offset im Aktuell bearbeiteten Level um die 1D-ID zu berechnen
+                curParentOffset = treeSizeInLevels[curLevel - 1].x; // das Offset im Aktuell bearbeiteten Level um die 1D-ID zu berechnen
             uint curParent1DID = get1DID(curParent3DID, curParentRes, curParentOffset); //berechne die ID-ID
             uint curParentType = typeTree[curParent1DID]; // hole den Typ der Elternzelle
             uint curParentLeafIndex = leafIndexTree[curParent1DID];
 
             uint3 bottomLeftChildID = curParent3DID * 2; // die ID der KindZelle- die räumlich gesehen unten links vorne in der Elternzelle liegt
             uint curChildsRes = curParentRes * 2; // die Auflösung ist im Kinderlevel doppelt so hoch
-            uint curChildsOffset = treeSizeInLevels[curLevel]; // nehme den Offset-Wert einen größer als vom aktuellen Wert, um aufs Child-Offset zu kommen
+            uint curChildsOffset = treeSizeInLevels[curLevel].x; // nehme den Offset-Wert einen größer als vom aktuellen Wert, um aufs Child-Offset zu kommen
             
             for (uint x = 0; x < 2; x++) // es gibt 2x2x2 Kindzellen
             {
@@ -57,13 +57,11 @@ void main( uint3 DTid : SV_DispatchThreadID )
                         if (curParentType == LEAF) // sollte die Elternzelle ein Blatt sein
                         {
                             leafIndexTree[curChild1DID] = curParent1DID; // trage im LeafIndexTree in alle Kindzellen den Index der ELtern-ID ein
-                            typeTree[curChild1DID] = COPYDOWN; // markiere in der Kindzelle, dass das Blatt gefunden wurde und sie nach unten kopieren muss
-
                         }
-                        else if ((curParentType == COPYDOWN) || (curParentType == EMPTY)) // sollte die ELternzelle leer sein oder als COPYDOWN markiert, muss es in einem höhren Level schon ein Blatt gegeben haben
+                        else if (curParentType == EMPTY) // sollte die ELternzelle leer sein oder als COPYDOWN markiert, muss es in einem höhren Level schon ein Blatt gegeben haben
                         {
                             leafIndexTree[curChild1DID] = curParentLeafIndex; // als kopiere den Wert aus leafIndexTree der Elternzelle auf die Kindzellen
-                            typeTree[curChild1DID] = COPYDOWN; // markiere in der Kindzelle, dass das Blatt schon gefunden wurde und sie nach unten kopieren muss
+                            typeTree[curChild1DID] = EMPTY; // markiere in der Kindzelle, dass das Blatt schon gefunden wurde und markiere etwaige obsolete als LEAF markierte Zellen mit EMPTY (sonst werden falsche LEAF-Werte nach unten kopiert)
                         }
                         else // ansonsten muss es eine interne Zelle sein, die Kinder können! also Blätter sein
                             leafIndexTree[curChild1DID] = curChild1DID; // trage jedes Mal die Child-IDs ein, sollten die Kinder auch intern sein ist es zwar überflüssig, 

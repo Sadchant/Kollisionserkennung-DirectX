@@ -18,6 +18,7 @@ CollisionDetectionManager::CollisionDetectionManager()
 	m_Results5_2 = 0;
 	m_Results6 = 0;
 	m_Results7 = 0;
+	m_Results8 = 0;
 
 	m_curComputeShader = 0;
 
@@ -32,12 +33,15 @@ CollisionDetectionManager::CollisionDetectionManager()
 	m_TypeTree_Buffer = 0;
 	m_LeafIndexTree_Buffer = 0;
 	m_CellTrianglePairs_Buffer = 0;
+	m_SortIndices_Buffer = 0;
 
 	m_ReduceData_CBuffer = 0;
 	m_ObjectCount_CBuffer = 0;
 	m_TreeSizeInLevel_CBuffer = 0;
 	m_StartLevel_CBuffer = 0;
 	m_Loops_CBuffer = 0;
+	m_RadixSort_ExclusivePrefixSumData_CBuffer = 0;
+
 
 	m_Result_Buffer1 = 0;
 	m_Result_Buffer2_1 = 0;
@@ -48,6 +52,7 @@ CollisionDetectionManager::CollisionDetectionManager()
 	m_Result_Buffer5_2 = 0;
 	m_Result_Buffer6 = 0;
 	m_Result_Buffer7 = 0;
+	m_Result_Buffer8 = 0;
 
 	m_NULL_SRV = NULL;
 	m_NULL_UAV = NULL;
@@ -64,6 +69,7 @@ CollisionDetectionManager::CollisionDetectionManager()
 	m_TypeTree_UAV = 0;
 	m_LeafIndexTree_UAV = 0;
 	m_CellTrianglePairs_UAV = 0;
+	m_SortIndices_UAV = 0;
 }
 
 
@@ -79,6 +85,9 @@ void CollisionDetectionManager::Initialize(ID3D11Device* device, ID3D11DeviceCon
 	m_ReduceData_CBuffer = CreateConstantBuffer(sizeof(ReduceData), D3D11_USAGE_DEFAULT, NULL);
 	m_StartLevel_CBuffer = CreateConstantBuffer(sizeof(SingleUINT), D3D11_USAGE_DEFAULT, NULL);
 	m_Loops_CBuffer = CreateConstantBuffer(sizeof(SingleUINT), D3D11_USAGE_DEFAULT, NULL);
+	m_RadixSort_ExclusivePrefixSumData_CBuffer = CreateConstantBuffer(sizeof(RadixSort_ExclusivePrefixSumData), D3D11_USAGE_DEFAULT, NULL);
+
+	
 	m_hwnd = hwnd;
 	InitComputeShaderVector();
 
@@ -111,6 +120,8 @@ void CollisionDetectionManager::InitComputeShaderVector()
 	pTempComputeShader = CreateComputeShader(L"../Kollisionserkennung DirectX/6_FillLeafIndexTree_CS.hlsl");
 	m_ComputeShaderVector.push_back(pTempComputeShader);
 	pTempComputeShader = CreateComputeShader(L"../Kollisionserkennung DirectX/7_CellTrianglePairs_CS.hlsl");
+	m_ComputeShaderVector.push_back(pTempComputeShader);
+	pTempComputeShader = CreateComputeShader(L"../Kollisionserkennung DirectX/8_1_RadixSort_ExclusivePrefixSum_CS.hlsl");
 	m_ComputeShaderVector.push_back(pTempComputeShader);
 }
 
@@ -163,7 +174,9 @@ void CollisionDetectionManager::CreateVertexAndTriangleArray(vector<ModelClass*>
 		curLastIndex += curModel->GetIndexCount() / 3; // Die lastIndexe beziehen sich auf Dreieck-IDS, also / 3
 		m_ObjectsLastIndices[i] = curLastIndex - 1;
 	}
-	m_CellTrianglePairsCount = m_TriangleCount * 3;
+	//m_CellTrianglePairsCount = m_TriangleCount * 4;
+	m_CellTrianglePairsCount = 12000;
+	m_SortIndicesCount = (int)pow(2, (int)ceil(log2(m_CellTrianglePairsCount)));
 }
 
 // erzeugt alle Buffer, die bei Hinzufügen/Löschen von Objekten in der Szene ihre Größe ändern
@@ -212,6 +225,7 @@ void CollisionDetectionManager::CreateSceneBuffersAndViews()
 	m_TypeTree_Buffer = CreateStructuredBuffer(m_TreeSize, sizeof(UINT), D3D11_BIND_UNORDERED_ACCESS, D3D11_USAGE_DEFAULT, 0, NULL);
 	m_LeafIndexTree_Buffer = CreateStructuredBuffer(m_TreeSize, sizeof(UINT), D3D11_BIND_UNORDERED_ACCESS, D3D11_USAGE_DEFAULT, 0, NULL);
 	m_CellTrianglePairs_Buffer = CreateStructuredBuffer(m_CellTrianglePairsCount, sizeof(CellTrianglePair), D3D11_BIND_UNORDERED_ACCESS, D3D11_USAGE_DEFAULT, 0, NULL);
+	m_SortIndices_Buffer = CreateStructuredBuffer(m_SortIndicesCount, sizeof(SortIndices), D3D11_BIND_UNORDERED_ACCESS, D3D11_USAGE_DEFAULT, 0, NULL);
 
 
 	m_Result_Buffer1 = CreateStructuredBuffer(m_TriangleCount, sizeof(BoundingBox), 0, D3D11_USAGE_STAGING, D3D11_CPU_ACCESS_READ, NULL);
@@ -223,6 +237,7 @@ void CollisionDetectionManager::CreateSceneBuffersAndViews()
 	m_Result_Buffer5_2 = CreateStructuredBuffer(m_TreeSize, sizeof(UINT), 0, D3D11_USAGE_STAGING, D3D11_CPU_ACCESS_READ, NULL);
 	m_Result_Buffer6 = CreateStructuredBuffer(m_TreeSize, sizeof(UINT), 0, D3D11_USAGE_STAGING, D3D11_CPU_ACCESS_READ, NULL);
 	m_Result_Buffer7 = CreateStructuredBuffer(m_CellTrianglePairsCount, sizeof(CellTrianglePair), 0, D3D11_USAGE_STAGING, D3D11_CPU_ACCESS_READ, NULL);
+	m_Result_Buffer8 = CreateStructuredBuffer(m_SortIndicesCount, sizeof(SortIndices), 0, D3D11_USAGE_STAGING, D3D11_CPU_ACCESS_READ, NULL);
 
 	m_Vertices_SRV = CreateBufferShaderResourceView(m_Vertex_Buffer, m_VertexCount);
 	m_Triangles_SRV = CreateBufferShaderResourceView(m_Triangle_Buffer, m_TriangleCount);
@@ -235,7 +250,9 @@ void CollisionDetectionManager::CreateSceneBuffersAndViews()
 	m_GlobalCounterTree_UAV = CreateBufferUnorderedAccessView(m_GlobalCounterTree_Buffer, m_TreeSize);
 	m_TypeTree_UAV = CreateBufferUnorderedAccessView(m_TypeTree_Buffer, m_TreeSize);
 	m_LeafIndexTree_UAV = CreateBufferUnorderedAccessView(m_LeafIndexTree_Buffer, m_TreeSize);
-	m_CellTrianglePairs_UAV = CreateBufferUnorderedAccessView(m_CellTrianglePairs_Buffer, m_CellTrianglePairsCount, D3D11_BUFFER_UAV_FLAG_APPEND);
+	m_CellTrianglePairs_UAV = CreateBufferUnorderedAccessView(m_CellTrianglePairs_Buffer, m_CellTrianglePairsCount, D3D11_BUFFER_UAV_FLAG_COUNTER);
+	m_SortIndices_UAV = CreateBufferUnorderedAccessView(m_SortIndices_Buffer, m_SortIndicesCount);
+
 }
 
 // gib alle Buffer, Shader Resource Views und Unordered Access Views frei
@@ -252,6 +269,7 @@ void CollisionDetectionManager::ReleaseBuffersAndViews()
 	SAFERELEASE(m_TypeTree_Buffer);
 	SAFERELEASE(m_LeafIndexTree_Buffer);
 	SAFERELEASE(m_CellTrianglePairs_Buffer);
+	SAFERELEASE(m_SortIndices_Buffer);
 	// Constant Buffer wird nur einmal erzeugt (weil sich seine Größe nicht ändert), also nur in Shutdown released!
 	SAFERELEASE(m_Result_Buffer1);
 	SAFERELEASE(m_Result_Buffer2_1);
@@ -262,6 +280,7 @@ void CollisionDetectionManager::ReleaseBuffersAndViews()
 	SAFERELEASE(m_Result_Buffer5_2);
 	SAFERELEASE(m_Result_Buffer6);
 	SAFERELEASE(m_Result_Buffer7);
+	SAFERELEASE(m_Result_Buffer8);
 
 	SAFERELEASE(m_Vertices_SRV);
 	SAFERELEASE(m_Triangles_SRV);
@@ -275,6 +294,7 @@ void CollisionDetectionManager::ReleaseBuffersAndViews()
 	SAFERELEASE(m_TypeTree_UAV);
 	SAFERELEASE(m_LeafIndexTree_UAV);
 	SAFERELEASE(m_CellTrianglePairs_UAV);
+	SAFERELEASE(m_SortIndices_UAV);
 	
 }
 
@@ -292,12 +312,14 @@ void CollisionDetectionManager::Shutdown()
 	SAFEDELETEARRAY(m_Results5_2);
 	SAFEDELETEARRAY(m_Results6);
 	SAFEDELETEARRAY(m_Results7);
+	SAFEDELETEARRAY(m_Results8);
 
 	SAFERELEASE(m_ReduceData_CBuffer);
 	SAFERELEASE(m_ObjectCount_CBuffer);
 	SAFERELEASE(m_TreeSizeInLevel_CBuffer);
 	SAFERELEASE(m_StartLevel_CBuffer);
 	SAFERELEASE(m_Loops_CBuffer);
+	SAFERELEASE(m_RadixSort_ExclusivePrefixSumData_CBuffer);
 
 	ReleaseBuffersAndViews();
 
@@ -334,7 +356,7 @@ ID3D11ComputeShader* CollisionDetectionManager::CreateComputeShader(WCHAR* csFil
 	// string then it means it could not find the shader file in which case we pop up a dialog box saying so.
 
 	// Compile the compute shader code, D3D_COMPILE_STANDARD_FILE_INCLUDE bewirkt, dass man "#include" in hlsl benutzen kann
-	result = D3DCompileFromFile(csFilename, NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", "cs_5_0", D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION,
+	result = D3DCompileFromFile(csFilename, NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", "cs_5_0", D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION | D3DCOMPILE_WARNINGS_ARE_ERRORS,
 		0, &computeShaderBuffer, &errorMessage);
 	if (FAILED(result))
 	{
@@ -705,7 +727,7 @@ void CollisionDetectionManager::_7_CellTrianglePairs()
 	deviceContext->CSSetConstantBuffers(0, 1, &m_ObjectCount_CBuffer);
 	deviceContext->CSSetConstantBuffers(1, 1, &m_TreeSizeInLevel_CBuffer);
 
-	int xThreadGroups = (int)ceil(m_TriangleCount / 512.0f);
+	int xThreadGroups = (int)ceil(m_TriangleCount / 1024.0f);
 	deviceContext->Dispatch(xThreadGroups, 1, 1);
 
 	// entferne die UAVs wieder von den Slots 0 - 2, damit sie wieder verwendet werden können
@@ -714,9 +736,58 @@ void CollisionDetectionManager::_7_CellTrianglePairs()
 	deviceContext->CSSetUnorderedAccessViews(2, 1, &m_NULL_UAV, 0);
 	deviceContext->CSSetUnorderedAccessViews(3, 1, &m_NULL_UAV, 0);
 	deviceContext->CSSetUnorderedAccessViews(4, 1, &m_NULL_UAV, 0);
+	deviceContext->CSSetUnorderedAccessViews(5, 1, &m_NULL_UAV, 0);
 }
 
 
+// ******* 7. Befülle Countertrees mit den Daten für jedes Objekt *******
+void CollisionDetectionManager::_8_SortCellTrianglePairs()
+{ 
+	//cout << (0 & 0) << endl;
+	CellTrianglePair testArray[12000] = { {0,0,0} };
+	D3D11_SUBRESOURCE_DATA test_SubresourceData = D3D11_SUBRESOURCE_DATA{ testArray, 0, 0 };
+	ID3D11Buffer* input_Buffer = CreateStructuredBuffer(12000, sizeof(CellTrianglePair), D3D11_BIND_UNORDERED_ACCESS, D3D11_USAGE_DEFAULT, 0, &test_SubresourceData);
+	ID3D11UnorderedAccessView* input_UAV = CreateBufferUnorderedAccessView(input_Buffer, 12000);
+
+	m_curComputeShader = m_ComputeShaderVector[7];
+	deviceContext->CSSetShader(m_curComputeShader, NULL, 0);
+
+	//deviceContext->CSSetUnorderedAccessViews(0, 1, &m_CellTrianglePairs_UAV, 0);
+	deviceContext->CSSetUnorderedAccessViews(0, 1, &input_UAV, 0);
+	deviceContext->CSSetUnorderedAccessViews(1, 1, &m_SortIndices_UAV, 0);
+
+	double inputSizeLog = log2(m_CellTrianglePairsCount);
+	inputSizeLog = ceil(inputSizeLog);
+	int curInputSize = (int)pow(2, inputSizeLog);
+	int curWorkSize = curInputSize / 2;
+	UINT loops;
+	int read2BitsFromHere = 0;
+	UINT combineDistance = 1;
+	bool readFromInput = true;
+	while (curWorkSize > 2) 
+	{
+		int groupCount = (int)ceil(curWorkSize / 1024.0f);
+		if (curWorkSize >= 1024)
+			loops = 11; // 11 Druchläufe verkleinern 1024 auf 1, wir wollen lediglich im letzten Durchlauf auf 2 verkleinern, wichtiger Unterschied!, also hier 11 statt 10
+		else
+			loops = (UINT)log2(curWorkSize) - 1; // weil bei 2 Elementen aufgehört werden kann, laufe einmal weniger (ansonsten wäre es bis 1 Element gegangen)
+		
+		if (!readFromInput)
+			read2BitsFromHere = -1;
+		RadixSort_ExclusivePrefixSumData radixSort_ExclusivePrefixSum_Data = { loops, read2BitsFromHere, combineDistance };
+		deviceContext->UpdateSubresource(m_RadixSort_ExclusivePrefixSumData_CBuffer, 0, NULL, &radixSort_ExclusivePrefixSum_Data, 0, 0);
+		deviceContext->CSSetConstantBuffers(0, 1, &m_RadixSort_ExclusivePrefixSumData_CBuffer);
+		deviceContext->Dispatch(groupCount, 1, 1);
+		curInputSize /= 2048;
+		curWorkSize = curInputSize / 2;
+		combineDistance *= 2048;
+		readFromInput = false;
+	}
+
+
+	SAFERELEASE(input_Buffer);
+	SAFERELEASE(input_UAV);
+}
 
 
 // führe die Kollisionsberechnung für das aktuelle Frame durch
@@ -740,13 +811,16 @@ void CollisionDetectionManager::Frame()
 	//_4_GlobalCounterTree_GetResult();
 
 	_5_FillTypeTree();
-	_5_FillTypeTree_GetResult();
+	//_5_FillTypeTree_GetResult();
 
 	_6_FillLeafIndexTree();
 	//_6_FillLeafIndexTree_GetResult();
 
 	_7_CellTrianglePairs();
-	_7_CellTrianglePairs_GetResult();
+	//_7_CellTrianglePairs_GetResult();
+
+	_8_SortCellTrianglePairs();
+	_8_SortCellTrianglePairs_GetResult();
 }
 
 
@@ -798,7 +872,7 @@ void CollisionDetectionManager::_3_FillCounterTrees_GetResult()
 
 	cout << "countertree" << endl;
 	int cellCounter = 0;
-	for (int i = 0; i < m_TreeSizeInLevel[SUBDIVS]*2; i++)
+	for (UINT i = 0; i < m_TreeSizeInLevel[SUBDIVS]*2; i++)
 	{
 		if (i >= 4681 + 37449 && i < 4681 + 1024 + 37449)
 		{
@@ -825,7 +899,7 @@ void CollisionDetectionManager::_4_GlobalCounterTree_GetResult()
 
 	cout << "GlobalCountertree:" << endl;
 	int cellCounter = 0;
-	for (int i = 0; i < m_TreeSizeInLevel[SUBDIVS]; i++)
+	for (UINT i = 0; i < m_TreeSizeInLevel[SUBDIVS]; i++)
 	{
 		if (i >= 4681 && i < 4681 + 1024)
 		{
@@ -864,11 +938,11 @@ void CollisionDetectionManager::_5_FillTypeTree_GetResult()
 	deviceContext->Unmap(m_Result_Buffer5_2, 0);
 
 	int leafCountperLevel[SUBDIVS+1] = { 0 };
-	for (int i = 0; i < m_TreeSizeInLevel[SUBDIVS]; i++)
+	for (UINT i = 0; i < m_TreeSizeInLevel[SUBDIVS]; i++)
 	{
 		if (m_Results5_2[i] == 2)
 		{
-			for (int j = 0; j < SUBDIVS+1; j++)
+			for (UINT j = 0; j < SUBDIVS+1; j++)
 			{
 				/*if (i >= 37449) 
 					cout << i << " " ;*/
@@ -890,7 +964,7 @@ void CollisionDetectionManager::_5_FillTypeTree_GetResult()
 
 	cout << "TypeTree:" << endl;
 	int cellCounter = 0;
-	for (int i = 0; i < m_TreeSizeInLevel[SUBDIVS]; i++)
+	for (UINT i = 0; i < m_TreeSizeInLevel[SUBDIVS]; i++)
 	{
 		if (i >= 4681 && i < 4681 + 1024)
 		{
@@ -904,7 +978,7 @@ void CollisionDetectionManager::_5_FillTypeTree_GetResult()
 	// globalcountertree
 	cout << " globalCountertree optimiert:" << endl;
 	cellCounter = 0;
-	for (int i = 0; i < m_TreeSizeInLevel[SUBDIVS]; i++)
+	for (UINT i = 0; i < m_TreeSizeInLevel[SUBDIVS]; i++)
 	{
 		if (i >= 4681 && i < 4681 + 1024)
 		{
@@ -936,7 +1010,7 @@ void CollisionDetectionManager::_6_FillLeafIndexTree_GetResult()
 
 	cout << "LeafIndexTree:" << endl;
 	int counter = 0;
-	for (int i = 0; i < m_TreeSizeInLevel[SUBDIVS]; i++)
+	for (UINT i = 0; i < m_TreeSizeInLevel[SUBDIVS]; i++)
 	{
 		if (m_Results6[i] >= 4681)
 		{
@@ -960,7 +1034,6 @@ void CollisionDetectionManager::_6_FillLeafIndexTree_GetResult()
 	}*/
 }
 
-
 void CollisionDetectionManager::_7_CellTrianglePairs_GetResult()
 {
 	SAFEDELETEARRAY(m_Results7);
@@ -973,5 +1046,28 @@ void CollisionDetectionManager::_7_CellTrianglePairs_GetResult()
 	// m_BoundingBoxes wird in CreateVertexAndTriangleArray neu initialisiert
 	memcpy(m_Results7, MappedResource7.pData, m_CellTrianglePairsCount * sizeof(CellTrianglePair));
 	deviceContext->Unmap(m_Result_Buffer7, 0);
-	cout << m_Results7[4].debug9 << endl;
+
+	int i;
+	for (i = 0; i < m_CellTrianglePairsCount; i++) 
+	{
+		if (m_Results7[i].cellID == 0 && m_Results7[i].objectID == 0 && m_Results7[i].triangleID == 0)
+		{
+			break;
+		}
+	}
+	cout << "CellTriangleCount: " << i << endl;
+}
+
+void CollisionDetectionManager::_8_SortCellTrianglePairs_GetResult()
+{
+	SAFEDELETEARRAY(m_Results8);
+	m_Results8 = new SortIndices[m_SortIndicesCount];
+	D3D11_MAPPED_SUBRESOURCE MappedResource8 = { 0 };
+	deviceContext->CopyResource(m_Result_Buffer8, m_SortIndices_Buffer);
+	deviceContext->Map(m_Result_Buffer8, 0, D3D11_MAP_READ, 0, &MappedResource8);
+	_Analysis_assume_(MappedResource8.pData);
+	assert(MappedResource8.pData);
+	// m_BoundingBoxes wird in CreateVertexAndTriangleArray neu initialisiert
+	memcpy(m_Results8, MappedResource8.pData, m_SortIndicesCount * sizeof(SortIndices));
+	deviceContext->Unmap(m_Result_Buffer8, 0);
 }

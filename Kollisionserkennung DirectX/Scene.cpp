@@ -368,7 +368,7 @@ bool Scene::LoadBigObjects(ID3D11Device *device, HWND hwnd)
 		MessageBox(hwnd, L"Could not initialize the first object.", L"Error", MB_OK);
 	}
 
-	for (int i = 0; i < 1; i++)
+	for (int i = 0; i < 10; i++)
 	{
 		m_Objects.push_back(curModel);
 	}

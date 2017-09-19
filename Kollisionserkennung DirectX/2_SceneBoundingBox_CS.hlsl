@@ -13,9 +13,9 @@ groupshared float3 maxTemp[_2_SCENEBOUNDINGBOX_XTHREADS];
 
 cbuffer reduceData : register(b0)
 {
-    int firstStepStride;
-    int inputSize;
-    int bool_OutputIsInput;
+    uint firstStepStride;
+    uint inputSize;
+    uint bool_OutputIsInput;
 }
 
 
