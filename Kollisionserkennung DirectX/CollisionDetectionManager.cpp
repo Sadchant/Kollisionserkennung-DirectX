@@ -134,7 +134,7 @@ void CollisionDetectionManager::InitComputeShaderVector()
 	m_ComputeShaderVector.push_back(pTempComputeShader);
 	pTempComputeShader = CreateComputeShader(L"../Kollisionserkennung DirectX/8_2_RadixSort_ExclusivePrefixSum_CS.hlsl");
 	m_ComputeShaderVector.push_back(pTempComputeShader);
-	pTempComputeShader = CreateComputeShader(L"../Kollisionserkennung DirectX/8_3_Sort_CS.hlsl");
+	pTempComputeShader = CreateComputeShader(L"../Kollisionserkennung DirectX/8_3_RadixSort_Sort_CS.hlsl");
 	m_ComputeShaderVector.push_back(pTempComputeShader);
 }
 
@@ -767,14 +767,16 @@ void CollisionDetectionManager::_7_CellTrianglePairs()
 void CollisionDetectionManager::_8_SortCellTrianglePairs()
 { 
 	//cout << (0 & 0) << endl;
-	CellTrianglePair testArray[15] = { {0,0,0} };
-	testArray[1] = { 1,0,0 };
-	testArray[2] = { 0,0,0 };
-	testArray[3] = { 2,0,0 };
-	testArray[4] = { 1,0,0 };
+	CellTrianglePair testArray[15] = { {3,0,0} };
+	testArray[1] = { 2,0,0 };
+	testArray[2] = { 1,0,0 };
+	testArray[3] = { 0,0,0 };
+	testArray[4] = { 3,0,0 };
 	testArray[5] = { 2,0,0 };
-	testArray[6] = { 3,0,0 };
+	testArray[6] = { 1,0,0 };
 	testArray[7] = { 0,0,0 };
+	testArray[8] = { 3,0,0 };
+	testArray[9] = { 2,0,0 };
 	D3D11_SUBRESOURCE_DATA test_SubresourceData = D3D11_SUBRESOURCE_DATA{ testArray, 0, 0 };
 	ID3D11Buffer* input_Buffer = CreateStructuredBuffer(15, sizeof(CellTrianglePair), D3D11_BIND_UNORDERED_ACCESS, D3D11_USAGE_DEFAULT, 0, &test_SubresourceData);
 	ID3D11UnorderedAccessView* input_UAV = CreateBufferUnorderedAccessView(input_Buffer, 15);
@@ -856,11 +858,12 @@ void CollisionDetectionManager::_8_SortCellTrianglePairs()
 	deviceContext->CSSetUnorderedAccessViews(1, 1, &m_NULL_UAV, 0);
 
 	// sortiere mit Hilfe der exklusiven Prefix-Summen
-	m_curComputeShader = m_ComputeShaderVector[8];
+	m_curComputeShader = m_ComputeShaderVector[9];
 	deviceContext->CSSetShader(m_curComputeShader, NULL, 0);
 
 	deviceContext->CSSetUnorderedAccessViews(0, 1, &m_SortIndices_UAV, 0);
-	deviceContext->CSSetUnorderedAccessViews(1, 1, &m_CellTrianglePairs_UAV, 0);
+	//deviceContext->CSSetUnorderedAccessViews(1, 1, &m_CellTrianglePairs_UAV, 0); XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+	deviceContext->CSSetUnorderedAccessViews(1, 1, &input_UAV, 0);
 	deviceContext->CSSetUnorderedAccessViews(2, 1, &m_CellTrianglePairsBackBuffer_UAV, 0);
 
 	bool b_backBufferIsInput = false;

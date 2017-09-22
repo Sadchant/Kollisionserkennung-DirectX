@@ -18,39 +18,27 @@ void main( uint3 DTid : SV_DispatchThreadID )
     uint cellTrianglePairsLength, stride, sortIndicesLength;
     cellTrianglePairs.GetDimensions(cellTrianglePairsLength, stride);
 
-    if(id < cellTrianglePairsLength)
+    if(id >= cellTrianglePairsLength)
         return;
 
     sortIndices.GetDimensions(sortIndicesLength, stride);
 
-    RWStructuredBuffer<CellTrianglePair> cellTrianglePairsInput;
-    RWStructuredBuffer<CellTrianglePair> cellTrianglePairsOutput;
-
-    if (bool_BackBufferIsInput == 1)
-    {
-        cellTrianglePairsInput = cellTrianglePairsBackBuffer;
-        cellTrianglePairsOutput = cellTrianglePairs;
-    } 
-    else
-    {
-        cellTrianglePairsInput = cellTrianglePairs;
-        cellTrianglePairsOutput = cellTrianglePairsBackBuffer;
-    }
     SortIndices curSortIndex = sortIndices[id];
     SortIndices nextSortIndex = sortIndices[id + 1];
     uint curOffset = 0;
     for (int i = 0; i < 4; i++)
     {
+        if (i > 0)
+            curOffset += sortIndices[sortIndicesLength - 1].array[i - 1];
         if (curSortIndex.array[i] != nextSortIndex.array[i])
         {
-            if(i > 0)
-                curOffset += sortIndices[sortIndicesLength].array[i - 1];
-            cellTrianglePairsOutput[curSortIndex.array[i] + curOffset] = cellTrianglePairsInput[id];
+            if (bool_BackBufferIsInput == 1)            
+                cellTrianglePairs[curSortIndex.array[i] + curOffset] = cellTrianglePairsBackBuffer[id];
+            else
+                cellTrianglePairsBackBuffer[curSortIndex.array[i] + curOffset] = cellTrianglePairs[id];
         }
     }
-    
-
-
+    //cellTrianglePairsBackBuffer[id] = cellTrianglePairs[id];
 }
 
 
