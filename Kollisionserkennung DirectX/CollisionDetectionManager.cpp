@@ -18,7 +18,8 @@ CollisionDetectionManager::CollisionDetectionManager()
 	m_Results5_2 = 0;
 	m_Results6 = 0;
 	m_Results7 = 0;
-	m_Results8 = 0;
+	m_Results8_1 = 0;
+	m_Results8_2 = 0;
 
 	m_curComputeShader = 0;
 
@@ -34,6 +35,7 @@ CollisionDetectionManager::CollisionDetectionManager()
 	m_LeafIndexTree_Buffer = 0;
 	m_CellTrianglePairs_Buffer = 0;
 	m_SortIndices_Buffer = 0;
+	m_CellTrianglePairsBackBuffer_Buffer = 0;
 
 	m_ReduceData_CBuffer = 0;
 	m_ObjectCount_CBuffer = 0;
@@ -42,6 +44,7 @@ CollisionDetectionManager::CollisionDetectionManager()
 	m_Loops_CBuffer = 0;
 	m_RadixSort_ExclusivePrefixSumData_CBuffer = 0;
 	m_RadixSort_ExclusivePrefixSumData2_CBuffer = 0;
+	m_BackBufferIsInput_CBuffer = 0;
 
 
 	m_Result_Buffer1 = 0;
@@ -53,7 +56,8 @@ CollisionDetectionManager::CollisionDetectionManager()
 	m_Result_Buffer5_2 = 0;
 	m_Result_Buffer6 = 0;
 	m_Result_Buffer7 = 0;
-	m_Result_Buffer8 = 0;
+	m_Result_Buffer8_1 = 0;
+	m_Result_Buffer8_2 = 0;
 
 	m_NULL_SRV = NULL;
 	m_NULL_UAV = NULL;
@@ -71,6 +75,8 @@ CollisionDetectionManager::CollisionDetectionManager()
 	m_LeafIndexTree_UAV = 0;
 	m_CellTrianglePairs_UAV = 0;
 	m_SortIndices_UAV = 0;
+	m_CellTrianglePairsBackBuffer_UAV = 0;
+
 }
 
 
@@ -88,6 +94,7 @@ void CollisionDetectionManager::Initialize(ID3D11Device* device, ID3D11DeviceCon
 	m_Loops_CBuffer = CreateConstantBuffer(sizeof(SingleUINT), D3D11_USAGE_DEFAULT, NULL);
 	m_RadixSort_ExclusivePrefixSumData_CBuffer = CreateConstantBuffer(sizeof(RadixSort_ExclusivePrefixSumData), D3D11_USAGE_DEFAULT, NULL);
 	m_RadixSort_ExclusivePrefixSumData2_CBuffer = CreateConstantBuffer(sizeof(RadixSort_ExclusivePrefixSumData2), D3D11_USAGE_DEFAULT, NULL);
+	m_BackBufferIsInput_CBuffer = CreateConstantBuffer(sizeof(BackBufferIsInput), D3D11_USAGE_DEFAULT, NULL);
 
 	
 	m_hwnd = hwnd;
@@ -126,6 +133,8 @@ void CollisionDetectionManager::InitComputeShaderVector()
 	pTempComputeShader = CreateComputeShader(L"../Kollisionserkennung DirectX/8_1_RadixSort_ExclusivePrefixSum_CS.hlsl");
 	m_ComputeShaderVector.push_back(pTempComputeShader);
 	pTempComputeShader = CreateComputeShader(L"../Kollisionserkennung DirectX/8_2_RadixSort_ExclusivePrefixSum_CS.hlsl");
+	m_ComputeShaderVector.push_back(pTempComputeShader);
+	pTempComputeShader = CreateComputeShader(L"../Kollisionserkennung DirectX/8_3_Sort_CS.hlsl");
 	m_ComputeShaderVector.push_back(pTempComputeShader);
 }
 
@@ -179,8 +188,8 @@ void CollisionDetectionManager::CreateVertexAndTriangleArray(vector<ModelClass*>
 		m_ObjectsLastIndices[i] = curLastIndex - 1;
 	}
 	//m_CellTrianglePairsCount = m_TriangleCount * 4;
-	m_CellTrianglePairsCount = 12000;
-	m_SortIndicesCount = (int)pow(2, (int)ceil(log2(m_CellTrianglePairsCount)));
+	m_CellTrianglePairsCount = 15;
+	m_SortIndicesCount = (int)pow(2, (int)ceil(log2(m_CellTrianglePairsCount))) + 1; // + 1 für eine komplette exklusive Prefix Summe
 }
 
 // erzeugt alle Buffer, die bei Hinzufügen/Löschen von Objekten in der Szene ihre Größe ändern
@@ -230,6 +239,7 @@ void CollisionDetectionManager::CreateSceneBuffersAndViews()
 	m_LeafIndexTree_Buffer = CreateStructuredBuffer(m_TreeSize, sizeof(UINT), D3D11_BIND_UNORDERED_ACCESS, D3D11_USAGE_DEFAULT, 0, NULL);
 	m_CellTrianglePairs_Buffer = CreateStructuredBuffer(m_CellTrianglePairsCount, sizeof(CellTrianglePair), D3D11_BIND_UNORDERED_ACCESS, D3D11_USAGE_DEFAULT, 0, NULL);
 	m_SortIndices_Buffer = CreateStructuredBuffer(m_SortIndicesCount, sizeof(SortIndices), D3D11_BIND_UNORDERED_ACCESS, D3D11_USAGE_DEFAULT, 0, NULL);
+	m_CellTrianglePairsBackBuffer_Buffer = CreateStructuredBuffer(m_CellTrianglePairsCount, sizeof(CellTrianglePair), D3D11_BIND_UNORDERED_ACCESS, D3D11_USAGE_DEFAULT, 0, NULL);
 
 
 	m_Result_Buffer1 = CreateStructuredBuffer(m_TriangleCount, sizeof(BoundingBox), 0, D3D11_USAGE_STAGING, D3D11_CPU_ACCESS_READ, NULL);
@@ -241,7 +251,8 @@ void CollisionDetectionManager::CreateSceneBuffersAndViews()
 	m_Result_Buffer5_2 = CreateStructuredBuffer(m_TreeSize, sizeof(UINT), 0, D3D11_USAGE_STAGING, D3D11_CPU_ACCESS_READ, NULL);
 	m_Result_Buffer6 = CreateStructuredBuffer(m_TreeSize, sizeof(UINT), 0, D3D11_USAGE_STAGING, D3D11_CPU_ACCESS_READ, NULL);
 	m_Result_Buffer7 = CreateStructuredBuffer(m_CellTrianglePairsCount, sizeof(CellTrianglePair), 0, D3D11_USAGE_STAGING, D3D11_CPU_ACCESS_READ, NULL);
-	m_Result_Buffer8 = CreateStructuredBuffer(m_SortIndicesCount, sizeof(SortIndices), 0, D3D11_USAGE_STAGING, D3D11_CPU_ACCESS_READ, NULL);
+	m_Result_Buffer8_1 = CreateStructuredBuffer(m_SortIndicesCount, sizeof(SortIndices), 0, D3D11_USAGE_STAGING, D3D11_CPU_ACCESS_READ, NULL);
+	m_Result_Buffer8_2 = CreateStructuredBuffer(m_CellTrianglePairsCount, sizeof(CellTrianglePair), 0, D3D11_USAGE_STAGING, D3D11_CPU_ACCESS_READ, NULL);
 
 	m_Vertices_SRV = CreateBufferShaderResourceView(m_Vertex_Buffer, m_VertexCount);
 	m_Triangles_SRV = CreateBufferShaderResourceView(m_Triangle_Buffer, m_TriangleCount);
@@ -256,6 +267,7 @@ void CollisionDetectionManager::CreateSceneBuffersAndViews()
 	m_LeafIndexTree_UAV = CreateBufferUnorderedAccessView(m_LeafIndexTree_Buffer, m_TreeSize);
 	m_CellTrianglePairs_UAV = CreateBufferUnorderedAccessView(m_CellTrianglePairs_Buffer, m_CellTrianglePairsCount, D3D11_BUFFER_UAV_FLAG_COUNTER);
 	m_SortIndices_UAV = CreateBufferUnorderedAccessView(m_SortIndices_Buffer, m_SortIndicesCount);
+	m_CellTrianglePairsBackBuffer_UAV = CreateBufferUnorderedAccessView(m_CellTrianglePairsBackBuffer_Buffer, m_CellTrianglePairsCount);
 
 }
 
@@ -274,6 +286,7 @@ void CollisionDetectionManager::ReleaseBuffersAndViews()
 	SAFERELEASE(m_LeafIndexTree_Buffer);
 	SAFERELEASE(m_CellTrianglePairs_Buffer);
 	SAFERELEASE(m_SortIndices_Buffer);
+	SAFERELEASE(m_CellTrianglePairsBackBuffer_Buffer);
 	// Constant Buffer wird nur einmal erzeugt (weil sich seine Größe nicht ändert), also nur in Shutdown released!
 	SAFERELEASE(m_Result_Buffer1);
 	SAFERELEASE(m_Result_Buffer2_1);
@@ -284,7 +297,8 @@ void CollisionDetectionManager::ReleaseBuffersAndViews()
 	SAFERELEASE(m_Result_Buffer5_2);
 	SAFERELEASE(m_Result_Buffer6);
 	SAFERELEASE(m_Result_Buffer7);
-	SAFERELEASE(m_Result_Buffer8);
+	SAFERELEASE(m_Result_Buffer8_1);
+	SAFERELEASE(m_Result_Buffer8_2);
 
 	SAFERELEASE(m_Vertices_SRV);
 	SAFERELEASE(m_Triangles_SRV);
@@ -299,6 +313,8 @@ void CollisionDetectionManager::ReleaseBuffersAndViews()
 	SAFERELEASE(m_LeafIndexTree_UAV);
 	SAFERELEASE(m_CellTrianglePairs_UAV);
 	SAFERELEASE(m_SortIndices_UAV);
+	SAFERELEASE(m_CellTrianglePairsBackBuffer_UAV);
+
 	
 }
 
@@ -316,7 +332,8 @@ void CollisionDetectionManager::Shutdown()
 	SAFEDELETEARRAY(m_Results5_2);
 	SAFEDELETEARRAY(m_Results6);
 	SAFEDELETEARRAY(m_Results7);
-	SAFEDELETEARRAY(m_Results8);
+	SAFEDELETEARRAY(m_Results8_1);
+	SAFEDELETEARRAY(m_Results8_2);
 
 	SAFERELEASE(m_ReduceData_CBuffer);
 	SAFERELEASE(m_ObjectCount_CBuffer);
@@ -325,6 +342,7 @@ void CollisionDetectionManager::Shutdown()
 	SAFERELEASE(m_Loops_CBuffer);
 	SAFERELEASE(m_RadixSort_ExclusivePrefixSumData_CBuffer);
 	SAFERELEASE(m_RadixSort_ExclusivePrefixSumData2_CBuffer);
+	SAFERELEASE(m_BackBufferIsInput_CBuffer);
 
 	ReleaseBuffersAndViews();
 
@@ -749,21 +767,28 @@ void CollisionDetectionManager::_7_CellTrianglePairs()
 void CollisionDetectionManager::_8_SortCellTrianglePairs()
 { 
 	//cout << (0 & 0) << endl;
-	CellTrianglePair testArray[12000] = { {0,0,0} };
+	CellTrianglePair testArray[15] = { {0,0,0} };
+	testArray[1] = { 1,0,0 };
+	testArray[2] = { 0,0,0 };
+	testArray[3] = { 2,0,0 };
+	testArray[4] = { 1,0,0 };
+	testArray[5] = { 2,0,0 };
+	testArray[6] = { 3,0,0 };
+	testArray[7] = { 0,0,0 };
 	D3D11_SUBRESOURCE_DATA test_SubresourceData = D3D11_SUBRESOURCE_DATA{ testArray, 0, 0 };
-	ID3D11Buffer* input_Buffer = CreateStructuredBuffer(12000, sizeof(CellTrianglePair), D3D11_BIND_UNORDERED_ACCESS, D3D11_USAGE_DEFAULT, 0, &test_SubresourceData);
-	ID3D11UnorderedAccessView* input_UAV = CreateBufferUnorderedAccessView(input_Buffer, 12000);
+	ID3D11Buffer* input_Buffer = CreateStructuredBuffer(15, sizeof(CellTrianglePair), D3D11_BIND_UNORDERED_ACCESS, D3D11_USAGE_DEFAULT, 0, &test_SubresourceData);
+	ID3D11UnorderedAccessView* input_UAV = CreateBufferUnorderedAccessView(input_Buffer, 15);
+
+	int sortIndicesCountPow2 = m_SortIndicesCount - 1; // m_SortIndices ist ja eins größer als die Zweierpotenz, sortIndicesPow2 ist die Zweierpotenz, mit der Schrittweiten und loop-Werte ebrechnet werden
 
 	m_curComputeShader = m_ComputeShaderVector[7];
 	deviceContext->CSSetShader(m_curComputeShader, NULL, 0);
 
-	//deviceContext->CSSetUnorderedAccessViews(0, 1, &m_CellTrianglePairs_UAV, 0);
+	//deviceContext->CSSetUnorderedAccessViews(0, 1, &m_CellTrianglePairs_UAV, 0); XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 	deviceContext->CSSetUnorderedAccessViews(0, 1, &input_UAV, 0);
 	deviceContext->CSSetUnorderedAccessViews(1, 1, &m_SortIndices_UAV, 0);
 
-	double inputSizeLog = log2(m_CellTrianglePairsCount);
-	inputSizeLog = ceil(inputSizeLog);
-	int _1_curInputSize = (int)pow(2, inputSizeLog);
+	int _1_curInputSize = sortIndicesCountPow2;
 	int _1_curWorkSize = _1_curInputSize / 2;
 	UINT _1_curLoops;
 	int read2BitsFromHere = 0;
@@ -789,9 +814,7 @@ void CollisionDetectionManager::_8_SortCellTrianglePairs()
 		readFromInput = false;
 	}
 
-	SAFERELEASE(input_Buffer);
-	SAFERELEASE(input_UAV);
-
+	deviceContext->CSSetUnorderedAccessViews(0, 1, &m_NULL_UAV, 0);
 	deviceContext->CSSetUnorderedAccessViews(1, 1, &m_NULL_UAV, 0);
 
 
@@ -800,23 +823,25 @@ void CollisionDetectionManager::_8_SortCellTrianglePairs()
 	deviceContext->CSSetShader(m_curComputeShader, NULL, 0);
 
 	deviceContext->CSSetUnorderedAccessViews(0, 1, &m_SortIndices_UAV, 0);
+	//deviceContext->CSSetUnorderedAccessViews(1, 1, &m_CellTrianglePairs_UAV, 0); XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+	deviceContext->CSSetUnorderedAccessViews(1, 1, &input_UAV, 0);
 
 	UINT _2_curInputSize, _2_curLoops, _2_curThreadDistance/*, _2_curStartCombineDistance*/;
 
 	// ermittle die InputSize des ersten Dispatches
-	_2_curInputSize = m_SortIndicesCount;
+	_2_curInputSize = sortIndicesCountPow2;
 	while (_2_curInputSize > 2048) // teile solange durch 2048, bis ein Wert kleiner als 2048 herauskommt, das ist die inputSize für den ersten Dispatch
 	{
 		_2_curInputSize /= 2048;
 	}
-	_2_curThreadDistance = m_SortIndicesCount / _2_curInputSize * 2; // * 2, weil ein Thread ja am Ende 2 Inputs bearbeitet, die Distanz ist also doppelt so groß
-	//_2_curStartCombineDistance = m_SortIndicesCount / 2;
+	_2_curThreadDistance = sortIndicesCountPow2 / _2_curInputSize * 2; // * 2, weil ein Thread ja am Ende 2 Inputs bearbeitet, die Distanz ist also doppelt so groß
 	_2_curLoops = (int)log2(_2_curInputSize);// curInputSize wird nicht durch 2 geteilt, da log2 ja die Basis 2 hat, wir aber am Ende auf 1 kommen wollen, also das Ergebnis nochmal durch 2 teilen
 	bool firstStep = true;
-	while (_2_curInputSize <= (UINT)m_SortIndicesCount) // beim letzten Schritt ist die inputSize = m_SortIndicesCount, deswegen das <=
+	read2BitsFromHere = 0;
+	while (_2_curInputSize <= (UINT)sortIndicesCountPow2) // beim letzten Schritt ist die inputSize = m_SortIndicesCount, deswegen das <=
 	{
 		int groupCount = (int)ceil(_2_curInputSize / 1024.0f);
-		RadixSort_ExclusivePrefixSumData2 radixSort_ExclusivePrefixSum_Data2 = { (UINT)firstStep, _2_curThreadDistance, _2_curLoops };
+		RadixSort_ExclusivePrefixSumData2 radixSort_ExclusivePrefixSum_Data2 = { (UINT)firstStep, _2_curThreadDistance, _2_curLoops, read2BitsFromHere };
 		deviceContext->UpdateSubresource(m_RadixSort_ExclusivePrefixSumData2_CBuffer, 0, NULL, &radixSort_ExclusivePrefixSum_Data2, 0, 0);
 		deviceContext->CSSetConstantBuffers(0, 1, &m_RadixSort_ExclusivePrefixSumData2_CBuffer);
 		deviceContext->Dispatch(groupCount, 1, 1);
@@ -827,7 +852,30 @@ void CollisionDetectionManager::_8_SortCellTrianglePairs()
 		firstStep = false;
 	}
 
+	deviceContext->CSSetUnorderedAccessViews(0, 1, &m_NULL_UAV, 0);
+	deviceContext->CSSetUnorderedAccessViews(1, 1, &m_NULL_UAV, 0);
 
+	// sortiere mit Hilfe der exklusiven Prefix-Summen
+	m_curComputeShader = m_ComputeShaderVector[8];
+	deviceContext->CSSetShader(m_curComputeShader, NULL, 0);
+
+	deviceContext->CSSetUnorderedAccessViews(0, 1, &m_SortIndices_UAV, 0);
+	deviceContext->CSSetUnorderedAccessViews(1, 1, &m_CellTrianglePairs_UAV, 0);
+	deviceContext->CSSetUnorderedAccessViews(2, 1, &m_CellTrianglePairsBackBuffer_UAV, 0);
+
+	bool b_backBufferIsInput = false;
+	BackBufferIsInput backBufferIsInput = { (UINT)b_backBufferIsInput };
+	deviceContext->UpdateSubresource(m_BackBufferIsInput_CBuffer, 0, NULL, &backBufferIsInput, 0, 0);
+	deviceContext->CSSetConstantBuffers(0, 1, &m_BackBufferIsInput_CBuffer);
+	int groupCount = (int)ceil(m_CellTrianglePairsCount / 1024.0f);
+	deviceContext->Dispatch(groupCount, 1, 1);
+
+	deviceContext->CSSetUnorderedAccessViews(0, 1, &m_NULL_UAV, 0);
+	deviceContext->CSSetUnorderedAccessViews(1, 1, &m_NULL_UAV, 0);
+	deviceContext->CSSetUnorderedAccessViews(2, 1, &m_NULL_UAV, 0);
+
+	SAFERELEASE(input_Buffer);
+	SAFERELEASE(input_UAV);
 }
 
 
@@ -1101,14 +1149,23 @@ void CollisionDetectionManager::_7_CellTrianglePairs_GetResult()
 
 void CollisionDetectionManager::_8_SortCellTrianglePairs_GetResult()
 {
-	SAFEDELETEARRAY(m_Results8);
-	m_Results8 = new SortIndices[m_SortIndicesCount];
-	D3D11_MAPPED_SUBRESOURCE MappedResource8 = { 0 };
-	deviceContext->CopyResource(m_Result_Buffer8, m_SortIndices_Buffer);
-	deviceContext->Map(m_Result_Buffer8, 0, D3D11_MAP_READ, 0, &MappedResource8);
-	_Analysis_assume_(MappedResource8.pData);
-	assert(MappedResource8.pData);
+	SAFEDELETEARRAY(m_Results8_1);
+	SAFEDELETEARRAY(m_Results8_2);
+	m_Results8_1 = new SortIndices[m_SortIndicesCount];
+	m_Results8_2 = new CellTrianglePair[m_CellTrianglePairsCount];
+	D3D11_MAPPED_SUBRESOURCE MappedResource8_1 = { 0 };
+	D3D11_MAPPED_SUBRESOURCE MappedResource8_2 = { 0 };
+	deviceContext->CopyResource(m_Result_Buffer8_1, m_SortIndices_Buffer);
+	deviceContext->CopyResource(m_Result_Buffer8_2, m_CellTrianglePairsBackBuffer_Buffer);
+	deviceContext->Map(m_Result_Buffer8_1, 0, D3D11_MAP_READ, 0, &MappedResource8_1);
+	deviceContext->Map(m_Result_Buffer8_2, 0, D3D11_MAP_READ, 0, &MappedResource8_2);
+	_Analysis_assume_(MappedResource8_1.pData);
+	_Analysis_assume_(MappedResource8_2.pData);
+	assert(MappedResource8_1.pData);
+	assert(MappedResource8_2.pData);
 	// m_BoundingBoxes wird in CreateVertexAndTriangleArray neu initialisiert
-	memcpy(m_Results8, MappedResource8.pData, m_SortIndicesCount * sizeof(SortIndices));
-	deviceContext->Unmap(m_Result_Buffer8, 0);
+	memcpy(m_Results8_1, MappedResource8_1.pData, m_SortIndicesCount * sizeof(SortIndices));
+	memcpy(m_Results8_2, MappedResource8_2.pData, m_CellTrianglePairsCount * sizeof(CellTrianglePair));
+	deviceContext->Unmap(m_Result_Buffer8_1, 0);
+	deviceContext->Unmap(m_Result_Buffer8_2, 0);
 }

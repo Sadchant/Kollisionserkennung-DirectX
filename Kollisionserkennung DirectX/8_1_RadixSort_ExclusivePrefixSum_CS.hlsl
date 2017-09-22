@@ -13,51 +13,23 @@ cbuffer radixSort_ExclusivePrefixSum_Data : register(b0)
     uint startCombineDistance;
 }
 
-SortIndices getSortIndicesFromInput(uint id, uint cellTrianglePairsSize)
-{
-
-    SortIndices resultSortIndices;
-    uint read2BitsFromHere_U = (uint) read2BitsFromHere;
-    resultSortIndices.array[0] = 0;
-    resultSortIndices.array[1] = 0;
-    resultSortIndices.array[2] = 0;
-    resultSortIndices.array[3] = 0;
-
-    if (id < cellTrianglePairsSize)
-    {
-        CellTrianglePair cellTrianglePair = cellTrianglePairs[id];
-        uint bit0 = (cellTrianglePair.cellID >> read2BitsFromHere_U) & 1;
-        uint bit1 = (cellTrianglePair.cellID >> read2BitsFromHere_U + 1) & 1;
-        if (bit1 == 0 && bit0 == 0)
-            resultSortIndices.array[0] = 1;
-        else if(bit1 == 0 && bit0 == 1)
-            resultSortIndices.array[1] = 1;
-        else if (bit1 == 1 && bit0 == 0)
-            resultSortIndices.array[2] = 1;
-        else if (bit1 == 1 && bit0 == 1)
-            resultSortIndices.array[3] = 1;
-    }
-    return resultSortIndices;
-}
-
-
 [numthreads(_8_1_RADIXSORT_EXCLUSIVEPREFIXSUM_XTHREADS, _8_1_RADIXSORT_EXCLUSIVEPREFIXSUM_YTHREADS, _8_1_RADIXSORT_EXCLUSIVEPREFIXSUM_ZTHREADS)]
 void main(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadID)
 {
     uint id = DTid.x;
     uint scaledGroupLocalID = GTid.x * 2;
     // Größe des Buffers ermitteln
-    uint cellTrianglePairsLength, stride;
+    uint cellTrianglePairsLength, stride, sortIndicesLength;
     cellTrianglePairs.GetDimensions(cellTrianglePairsLength, stride);
-    uint sortIndicesLength;
     sortIndices.GetDimensions(sortIndicesLength, stride);
+    sortIndicesLength -= 1; // die letzte Stelle wird seperat befüllt
 
     uint threadDistance = startCombineDistance * 2;
     uint dataID = id * threadDistance + threadDistance - 1; // falsch gescaled?
     if (read2BitsFromHere != -1)
     {
-        groupSortIndices[scaledGroupLocalID] = getSortIndicesFromInput(id * 2, cellTrianglePairsLength);
-        groupSortIndices[scaledGroupLocalID + 1] = getSortIndicesFromInput(id * 2 + 1, cellTrianglePairsLength);
+        groupSortIndices[scaledGroupLocalID] = getSortIndicesFromInput(id * 2, cellTrianglePairsLength, (uint)read2BitsFromHere, cellTrianglePairs);
+        groupSortIndices[scaledGroupLocalID + 1] = getSortIndicesFromInput(id * 2 + 1, cellTrianglePairsLength, (uint) read2BitsFromHere, cellTrianglePairs);
     }
     else
     {

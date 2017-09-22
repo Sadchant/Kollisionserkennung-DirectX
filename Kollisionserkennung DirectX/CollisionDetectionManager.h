@@ -90,6 +90,13 @@ private:
 		UINT bool_threadDistance;
 		UINT threadDistance;
 		UINT loops;
+		int read2BitsFromHere;
+	};
+
+	__declspec(align(16)) // Structs in einem ConstantBuffer müpssen auf 16 Byte aligned sein
+		struct BackBufferIsInput
+	{
+		UINT bool_BackBufferIsInput;
 	};
 
 
@@ -150,8 +157,10 @@ private:
 	ID3D11Buffer* m_GlobalCounterTree_Buffer; // die Countertrees für alle Objekte
 	ID3D11Buffer* m_TypeTree_Buffer; // der Typetree für den globalen Tree
 	ID3D11Buffer* m_LeafIndexTree_Buffer; // in diesem Tree steht an jeder Stelle die ID der Zelle, die in diesem Zweig Blatt ist
-	ID3D11Buffer* m_CellTrianglePairs_Buffer; // in diesem Tree steht an jeder Stelle die ID der Zelle, die in diesem Zweig Blatt ist
+	ID3D11Buffer* m_CellTrianglePairs_Buffer; // enthält alle für die Kollisionsberechnung relevanten Zellen-Dreicks-Paare
 	ID3D11Buffer* m_SortIndices_Buffer; // Indices für den RadixSort, wo wird pro Bit hinsortiert?
+	ID3D11Buffer* m_CellTrianglePairsBackBuffer_Buffer; // dient als BackBuffer beim Sortieren
+
 
 	// ConstantBuffer:
 	ID3D11Buffer* m_ReduceData_CBuffer;
@@ -161,6 +170,7 @@ private:
 	ID3D11Buffer* m_Loops_CBuffer;
 	ID3D11Buffer* m_RadixSort_ExclusivePrefixSumData_CBuffer;
 	ID3D11Buffer* m_RadixSort_ExclusivePrefixSumData2_CBuffer;
+	ID3D11Buffer* m_BackBufferIsInput_CBuffer;
 
 	// Test-ResultBuffer
 	BoundingBox* m_Results1; // wird von der GPU befüllt!
@@ -172,7 +182,8 @@ private:
 	UINT* m_Results5_2; // wird von der GPU befüllt!
 	UINT* m_Results6; // wird von der GPU befüllt!
 	CellTrianglePair* m_Results7; // wird von der GPU befüllt!
-	SortIndices* m_Results8; // wird von der GPU befüllt!
+	SortIndices* m_Results8_1; // wird von der GPU befüllt!
+	CellTrianglePair* m_Results8_2; // wird von der GPU befüllt!
 
 	// langsame (CPU-Zugriff!) ResultBuffer, in die ein Ergebnis von der GPU kopiert wird
 	ID3D11Buffer* m_Result_Buffer1;
@@ -184,7 +195,8 @@ private:
 	ID3D11Buffer* m_Result_Buffer5_2;
 	ID3D11Buffer* m_Result_Buffer6;
 	ID3D11Buffer* m_Result_Buffer7;
-	ID3D11Buffer* m_Result_Buffer8;
+	ID3D11Buffer* m_Result_Buffer8_1;
+	ID3D11Buffer* m_Result_Buffer8_2;
 
 
 
@@ -205,6 +217,8 @@ private:
 	ID3D11UnorderedAccessView* m_LeafIndexTree_UAV;
 	ID3D11UnorderedAccessView* m_CellTrianglePairs_UAV;
 	ID3D11UnorderedAccessView* m_SortIndices_UAV;
+	ID3D11UnorderedAccessView* m_CellTrianglePairsBackBuffer_UAV;
+
 
 };
 
