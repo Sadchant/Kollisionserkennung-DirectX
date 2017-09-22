@@ -84,6 +84,14 @@ private:
 		UINT startCombineDistance;
 	};
 
+	__declspec(align(16)) // Structs in einem ConstantBuffer müpssen auf 16 Byte aligned sein
+	struct RadixSort_ExclusivePrefixSumData2
+	{
+		UINT bool_threadDistance;
+		UINT threadDistance;
+		UINT loops;
+	};
+
 
 	void InitComputeShaderVector();
 	void CreateSceneBuffersAndViews();
@@ -152,6 +160,7 @@ private:
 	ID3D11Buffer* m_StartLevel_CBuffer;
 	ID3D11Buffer* m_Loops_CBuffer;
 	ID3D11Buffer* m_RadixSort_ExclusivePrefixSumData_CBuffer;
+	ID3D11Buffer* m_RadixSort_ExclusivePrefixSumData2_CBuffer;
 
 	// Test-ResultBuffer
 	BoundingBox* m_Results1; // wird von der GPU befüllt!

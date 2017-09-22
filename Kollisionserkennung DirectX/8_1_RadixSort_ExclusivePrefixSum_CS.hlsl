@@ -53,7 +53,7 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadID)
     sortIndices.GetDimensions(sortIndicesLength, stride);
 
     uint threadDistance = startCombineDistance * 2;
-    uint dataID = id * threadDistance + threadDistance - 1;
+    uint dataID = id * threadDistance + threadDistance - 1; // falsch gescaled?
     if (read2BitsFromHere != -1)
     {
         groupSortIndices[scaledGroupLocalID] = getSortIndicesFromInput(id * 2, cellTrianglePairsLength);
@@ -86,7 +86,6 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadID)
                 uint curID = scaledGroupLocalID + curCombineDistance * 2 - 1;
                 for (uint k = 0; k < 4; k++)
                 {
-                    // auseinanderfriemeln und debuggen!
                     groupSortIndices[curID].array[k] += groupSortIndices[curID - curCombineDistance].array[k];
                 }
                 curCombineDistance *= 2;

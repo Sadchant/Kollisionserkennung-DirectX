@@ -41,6 +41,7 @@ CollisionDetectionManager::CollisionDetectionManager()
 	m_StartLevel_CBuffer = 0;
 	m_Loops_CBuffer = 0;
 	m_RadixSort_ExclusivePrefixSumData_CBuffer = 0;
+	m_RadixSort_ExclusivePrefixSumData2_CBuffer = 0;
 
 
 	m_Result_Buffer1 = 0;
@@ -86,6 +87,7 @@ void CollisionDetectionManager::Initialize(ID3D11Device* device, ID3D11DeviceCon
 	m_StartLevel_CBuffer = CreateConstantBuffer(sizeof(SingleUINT), D3D11_USAGE_DEFAULT, NULL);
 	m_Loops_CBuffer = CreateConstantBuffer(sizeof(SingleUINT), D3D11_USAGE_DEFAULT, NULL);
 	m_RadixSort_ExclusivePrefixSumData_CBuffer = CreateConstantBuffer(sizeof(RadixSort_ExclusivePrefixSumData), D3D11_USAGE_DEFAULT, NULL);
+	m_RadixSort_ExclusivePrefixSumData2_CBuffer = CreateConstantBuffer(sizeof(RadixSort_ExclusivePrefixSumData2), D3D11_USAGE_DEFAULT, NULL);
 
 	
 	m_hwnd = hwnd;
@@ -122,6 +124,8 @@ void CollisionDetectionManager::InitComputeShaderVector()
 	pTempComputeShader = CreateComputeShader(L"../Kollisionserkennung DirectX/7_CellTrianglePairs_CS.hlsl");
 	m_ComputeShaderVector.push_back(pTempComputeShader);
 	pTempComputeShader = CreateComputeShader(L"../Kollisionserkennung DirectX/8_1_RadixSort_ExclusivePrefixSum_CS.hlsl");
+	m_ComputeShaderVector.push_back(pTempComputeShader);
+	pTempComputeShader = CreateComputeShader(L"../Kollisionserkennung DirectX/8_2_RadixSort_ExclusivePrefixSum_CS.hlsl");
 	m_ComputeShaderVector.push_back(pTempComputeShader);
 }
 
@@ -320,6 +324,7 @@ void CollisionDetectionManager::Shutdown()
 	SAFERELEASE(m_StartLevel_CBuffer);
 	SAFERELEASE(m_Loops_CBuffer);
 	SAFERELEASE(m_RadixSort_ExclusivePrefixSumData_CBuffer);
+	SAFERELEASE(m_RadixSort_ExclusivePrefixSumData2_CBuffer);
 
 	ReleaseBuffersAndViews();
 
@@ -758,35 +763,71 @@ void CollisionDetectionManager::_8_SortCellTrianglePairs()
 
 	double inputSizeLog = log2(m_CellTrianglePairsCount);
 	inputSizeLog = ceil(inputSizeLog);
-	int curInputSize = (int)pow(2, inputSizeLog);
-	int curWorkSize = curInputSize / 2;
-	UINT loops;
+	int _1_curInputSize = (int)pow(2, inputSizeLog);
+	int _1_curWorkSize = _1_curInputSize / 2;
+	UINT _1_curLoops;
 	int read2BitsFromHere = 0;
-	UINT combineDistance = 1;
+	UINT _1_combineDistance = 1;
 	bool readFromInput = true;
-	while (curWorkSize > 2) 
+	while (_1_curWorkSize > 2) 
 	{
-		int groupCount = (int)ceil(curWorkSize / 1024.0f);
-		if (curWorkSize >= 1024)
-			loops = 11; // 11 Druchläufe verkleinern 1024 auf 1, wir wollen lediglich im letzten Durchlauf auf 2 verkleinern, wichtiger Unterschied!, also hier 11 statt 10
+		int groupCount = (int)ceil(_1_curWorkSize / 1024.0f);
+		if (_1_curWorkSize >= 1024)
+			_1_curLoops = 11; // 11 Druchläufe verkleinern 1024 auf 1, wir wollen lediglich im letzten Durchlauf auf 2 verkleinern, wichtiger Unterschied!, also hier 11 statt 10
 		else
-			loops = (UINT)log2(curWorkSize) - 1; // weil bei 2 Elementen aufgehört werden kann, laufe einmal weniger (ansonsten wäre es bis 1 Element gegangen)
+			_1_curLoops = (UINT)log2(_1_curInputSize) - 1; // weil bei 2 Elementen aufgehört werden kann, laufe einmal weniger (ansonsten wäre es bis 1 Element gegangen)
 		
 		if (!readFromInput)
 			read2BitsFromHere = -1;
-		RadixSort_ExclusivePrefixSumData radixSort_ExclusivePrefixSum_Data = { loops, read2BitsFromHere, combineDistance };
+		RadixSort_ExclusivePrefixSumData radixSort_ExclusivePrefixSum_Data = { _1_curLoops, read2BitsFromHere, _1_combineDistance };
 		deviceContext->UpdateSubresource(m_RadixSort_ExclusivePrefixSumData_CBuffer, 0, NULL, &radixSort_ExclusivePrefixSum_Data, 0, 0);
 		deviceContext->CSSetConstantBuffers(0, 1, &m_RadixSort_ExclusivePrefixSumData_CBuffer);
 		deviceContext->Dispatch(groupCount, 1, 1);
-		curInputSize /= 2048;
-		curWorkSize = curInputSize / 2;
-		combineDistance *= 2048;
+		_1_curInputSize /= 2048;
+		_1_curWorkSize = _1_curInputSize / 2;
+		_1_combineDistance *= 2048;
 		readFromInput = false;
 	}
 
-
 	SAFERELEASE(input_Buffer);
 	SAFERELEASE(input_UAV);
+
+	deviceContext->CSSetUnorderedAccessViews(1, 1, &m_NULL_UAV, 0);
+
+
+	// Phase 2 der exklusive Prefix Summe
+	m_curComputeShader = m_ComputeShaderVector[8];
+	deviceContext->CSSetShader(m_curComputeShader, NULL, 0);
+
+	deviceContext->CSSetUnorderedAccessViews(0, 1, &m_SortIndices_UAV, 0);
+
+	UINT _2_curInputSize, _2_curLoops, _2_curThreadDistance/*, _2_curStartCombineDistance*/;
+
+	// ermittle die InputSize des ersten Dispatches
+	_2_curInputSize = m_SortIndicesCount;
+	while (_2_curInputSize > 2048) // teile solange durch 2048, bis ein Wert kleiner als 2048 herauskommt, das ist die inputSize für den ersten Dispatch
+	{
+		_2_curInputSize /= 2048;
+	}
+	_2_curThreadDistance = m_SortIndicesCount / _2_curInputSize * 2; // * 2, weil ein Thread ja am Ende 2 Inputs bearbeitet, die Distanz ist also doppelt so groß
+	//_2_curStartCombineDistance = m_SortIndicesCount / 2;
+	_2_curLoops = (int)log2(_2_curInputSize);// curInputSize wird nicht durch 2 geteilt, da log2 ja die Basis 2 hat, wir aber am Ende auf 1 kommen wollen, also das Ergebnis nochmal durch 2 teilen
+	bool firstStep = true;
+	while (_2_curInputSize <= (UINT)m_SortIndicesCount) // beim letzten Schritt ist die inputSize = m_SortIndicesCount, deswegen das <=
+	{
+		int groupCount = (int)ceil(_2_curInputSize / 1024.0f);
+		RadixSort_ExclusivePrefixSumData2 radixSort_ExclusivePrefixSum_Data2 = { (UINT)firstStep, _2_curThreadDistance, _2_curLoops };
+		deviceContext->UpdateSubresource(m_RadixSort_ExclusivePrefixSumData2_CBuffer, 0, NULL, &radixSort_ExclusivePrefixSum_Data2, 0, 0);
+		deviceContext->CSSetConstantBuffers(0, 1, &m_RadixSort_ExclusivePrefixSumData2_CBuffer);
+		deviceContext->Dispatch(groupCount, 1, 1);
+		_2_curInputSize *= 2048;
+		_2_curThreadDistance /= 2048;
+		_2_curLoops = 11; // ab dem ersten Schritt werden immer 11 Schritte (soviel kann eine Gruppe reduzieren) ausgeführt
+		//_2_curStartCombineDistance /= (UINT)pow (2, _2_curLoops);
+		firstStep = false;
+	}
+
+
 }
 
 

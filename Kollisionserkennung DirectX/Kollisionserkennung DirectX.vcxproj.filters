@@ -157,6 +157,7 @@
     <None Include="7_CellTrianglePairs_CS.hlsl" />
     <None Include="6_FillLeafIndexTree_CS.hlsl" />
     <None Include="8_1_RadixSort_ExclusivePrefixSum_CS.hlsl" />
+    <None Include="8_2_RadixSort_ExclusivePrefixSum_CS.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Kollisionserkennung DirectX.rc">
