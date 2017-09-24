@@ -20,6 +20,7 @@ CollisionDetectionManager::CollisionDetectionManager()
 	m_Results7 = 0;
 	m_Results8_1 = 0;
 	m_Results8_2 = 0;
+	m_Results8_3 = 0;
 
 	m_curComputeShader = 0;
 
@@ -44,7 +45,6 @@ CollisionDetectionManager::CollisionDetectionManager()
 	m_Loops_CBuffer = 0;
 	m_RadixSort_ExclusivePrefixSumData_CBuffer = 0;
 	m_RadixSort_ExclusivePrefixSumData2_CBuffer = 0;
-	m_BackBufferIsInput_CBuffer = 0;
 
 
 	m_Result_Buffer1 = 0;
@@ -58,6 +58,7 @@ CollisionDetectionManager::CollisionDetectionManager()
 	m_Result_Buffer7 = 0;
 	m_Result_Buffer8_1 = 0;
 	m_Result_Buffer8_2 = 0;
+	m_Result_Buffer8_3 = 0;
 
 	m_NULL_SRV = NULL;
 	m_NULL_UAV = NULL;
@@ -94,7 +95,6 @@ void CollisionDetectionManager::Initialize(ID3D11Device* device, ID3D11DeviceCon
 	m_Loops_CBuffer = CreateConstantBuffer(sizeof(SingleUINT), D3D11_USAGE_DEFAULT, NULL);
 	m_RadixSort_ExclusivePrefixSumData_CBuffer = CreateConstantBuffer(sizeof(RadixSort_ExclusivePrefixSumData), D3D11_USAGE_DEFAULT, NULL);
 	m_RadixSort_ExclusivePrefixSumData2_CBuffer = CreateConstantBuffer(sizeof(RadixSort_ExclusivePrefixSumData2), D3D11_USAGE_DEFAULT, NULL);
-	m_BackBufferIsInput_CBuffer = CreateConstantBuffer(sizeof(BackBufferIsInput), D3D11_USAGE_DEFAULT, NULL);
 
 	
 	m_hwnd = hwnd;
@@ -187,8 +187,8 @@ void CollisionDetectionManager::CreateVertexAndTriangleArray(vector<ModelClass*>
 		curLastIndex += curModel->GetIndexCount() / 3; // Die lastIndexe beziehen sich auf Dreieck-IDS, also / 3
 		m_ObjectsLastIndices[i] = curLastIndex - 1;
 	}
-	//m_CellTrianglePairsCount = m_TriangleCount * 4;
-	m_CellTrianglePairsCount = 15;
+	m_CellTrianglePairsCount = m_TriangleCount * 4;
+	//m_CellTrianglePairsCount = 15;
 	m_SortIndicesCount = (int)pow(2, (int)ceil(log2(m_CellTrianglePairsCount))) + 1; // + 1 für eine komplette exklusive Prefix Summe
 }
 
@@ -253,6 +253,7 @@ void CollisionDetectionManager::CreateSceneBuffersAndViews()
 	m_Result_Buffer7 = CreateStructuredBuffer(m_CellTrianglePairsCount, sizeof(CellTrianglePair), 0, D3D11_USAGE_STAGING, D3D11_CPU_ACCESS_READ, NULL);
 	m_Result_Buffer8_1 = CreateStructuredBuffer(m_SortIndicesCount, sizeof(SortIndices), 0, D3D11_USAGE_STAGING, D3D11_CPU_ACCESS_READ, NULL);
 	m_Result_Buffer8_2 = CreateStructuredBuffer(m_CellTrianglePairsCount, sizeof(CellTrianglePair), 0, D3D11_USAGE_STAGING, D3D11_CPU_ACCESS_READ, NULL);
+	m_Result_Buffer8_3 = CreateStructuredBuffer(m_CellTrianglePairsCount, sizeof(CellTrianglePair), 0, D3D11_USAGE_STAGING, D3D11_CPU_ACCESS_READ, NULL);
 
 	m_Vertices_SRV = CreateBufferShaderResourceView(m_Vertex_Buffer, m_VertexCount);
 	m_Triangles_SRV = CreateBufferShaderResourceView(m_Triangle_Buffer, m_TriangleCount);
@@ -299,6 +300,7 @@ void CollisionDetectionManager::ReleaseBuffersAndViews()
 	SAFERELEASE(m_Result_Buffer7);
 	SAFERELEASE(m_Result_Buffer8_1);
 	SAFERELEASE(m_Result_Buffer8_2);
+	SAFERELEASE(m_Result_Buffer8_3);
 
 	SAFERELEASE(m_Vertices_SRV);
 	SAFERELEASE(m_Triangles_SRV);
@@ -334,6 +336,7 @@ void CollisionDetectionManager::Shutdown()
 	SAFEDELETEARRAY(m_Results7);
 	SAFEDELETEARRAY(m_Results8_1);
 	SAFEDELETEARRAY(m_Results8_2);
+	SAFEDELETEARRAY(m_Results8_3);
 
 	SAFERELEASE(m_ReduceData_CBuffer);
 	SAFERELEASE(m_ObjectCount_CBuffer);
@@ -342,7 +345,6 @@ void CollisionDetectionManager::Shutdown()
 	SAFERELEASE(m_Loops_CBuffer);
 	SAFERELEASE(m_RadixSort_ExclusivePrefixSumData_CBuffer);
 	SAFERELEASE(m_RadixSort_ExclusivePrefixSumData2_CBuffer);
-	SAFERELEASE(m_BackBufferIsInput_CBuffer);
 
 	ReleaseBuffersAndViews();
 
@@ -782,100 +784,125 @@ void CollisionDetectionManager::_8_SortCellTrianglePairs()
 	ID3D11UnorderedAccessView* input_UAV = CreateBufferUnorderedAccessView(input_Buffer, 15);
 
 	int sortIndicesCountPow2 = m_SortIndicesCount - 1; // m_SortIndices ist ja eins größer als die Zweierpotenz, sortIndicesPow2 ist die Zweierpotenz, mit der Schrittweiten und loop-Werte ebrechnet werden
-
-	m_curComputeShader = m_ComputeShaderVector[7];
-	deviceContext->CSSetShader(m_curComputeShader, NULL, 0);
-
-	//deviceContext->CSSetUnorderedAccessViews(0, 1, &m_CellTrianglePairs_UAV, 0); XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-	deviceContext->CSSetUnorderedAccessViews(0, 1, &input_UAV, 0);
-	deviceContext->CSSetUnorderedAccessViews(1, 1, &m_SortIndices_UAV, 0);
-
-	int _1_curInputSize = sortIndicesCountPow2;
-	int _1_curWorkSize = _1_curInputSize / 2;
-	UINT _1_curLoops;
 	int read2BitsFromHere = 0;
-	UINT _1_combineDistance = 1;
-	bool readFromInput = true;
-	while (_1_curWorkSize > 2) 
+	bool backBufferIsInput = false;
+
+	while (read2BitsFromHere < 32)
 	{
-		int groupCount = (int)ceil(_1_curWorkSize / 1024.0f);
-		if (_1_curWorkSize >= 1024)
-			_1_curLoops = 11; // 11 Druchläufe verkleinern 1024 auf 1, wir wollen lediglich im letzten Durchlauf auf 2 verkleinern, wichtiger Unterschied!, also hier 11 statt 10
+		// ####################################################_8_1_####################################################
+		m_curComputeShader = m_ComputeShaderVector[7];
+		deviceContext->CSSetShader(m_curComputeShader, NULL, 0);
+
+		if (backBufferIsInput)
+			deviceContext->CSSetUnorderedAccessViews(0, 1, &m_CellTrianglePairsBackBuffer_UAV, 0);
 		else
-			_1_curLoops = (UINT)log2(_1_curInputSize) - 1; // weil bei 2 Elementen aufgehört werden kann, laufe einmal weniger (ansonsten wäre es bis 1 Element gegangen)
-		
-		if (!readFromInput)
-			read2BitsFromHere = -1;
-		RadixSort_ExclusivePrefixSumData radixSort_ExclusivePrefixSum_Data = { _1_curLoops, read2BitsFromHere, _1_combineDistance };
-		deviceContext->UpdateSubresource(m_RadixSort_ExclusivePrefixSumData_CBuffer, 0, NULL, &radixSort_ExclusivePrefixSum_Data, 0, 0);
-		deviceContext->CSSetConstantBuffers(0, 1, &m_RadixSort_ExclusivePrefixSumData_CBuffer);
+			deviceContext->CSSetUnorderedAccessViews(0, 1, &m_CellTrianglePairs_UAV, 0); 
+			//deviceContext->CSSetUnorderedAccessViews(0, 1, &input_UAV, 0); XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+
+		deviceContext->CSSetUnorderedAccessViews(1, 1, &m_SortIndices_UAV, 0);
+
+		int _1_curInputSize = sortIndicesCountPow2;
+		int _1_curWorkSize = _1_curInputSize / 2;
+		UINT _1_curLoops;
+		UINT _1_combineDistance = 1;
+		bool readFromInput = true;
+		int curRead2BitsFromHere; // hier wird entweder read2BitsFromHere eingetragen oder -1, wenn es der erste Durchgang ist
+		while (_1_curWorkSize > 2)
+		{
+			int groupCount = (int)ceil(_1_curWorkSize / 1024.0f);
+			if (_1_curWorkSize >= 1024)
+				_1_curLoops = 11; // 11 Druchläufe verkleinern 1024 auf 1, wir wollen lediglich im letzten Durchlauf auf 2 verkleinern, wichtiger Unterschied!, also hier 11 statt 10
+			else
+				_1_curLoops = (UINT)log2(_1_curInputSize) - 1; // weil bei 2 Elementen aufgehört werden kann, laufe einmal weniger (ansonsten wäre es bis 1 Element gegangen)
+			if (!readFromInput) // sollte es der erste Durchlauf sein, müssen die Bits eingelesen werden, dem Shader wird curRead2BitsFromHere = -1 übergeben
+				curRead2BitsFromHere = -1;
+			else // ansonsten wurden die Bits schon eingelesen und die relevanten read2BitsFromHere werden an den Shader übergeben
+				curRead2BitsFromHere = read2BitsFromHere;
+			RadixSort_ExclusivePrefixSumData radixSort_ExclusivePrefixSum_Data = { _1_curLoops, curRead2BitsFromHere, _1_combineDistance };
+			deviceContext->UpdateSubresource(m_RadixSort_ExclusivePrefixSumData_CBuffer, 0, NULL, &radixSort_ExclusivePrefixSum_Data, 0, 0);
+			deviceContext->CSSetConstantBuffers(0, 1, &m_RadixSort_ExclusivePrefixSumData_CBuffer);
+			deviceContext->Dispatch(groupCount, 1, 1);
+			_1_curInputSize /= 2048;
+			_1_curWorkSize = _1_curInputSize / 2;
+			_1_combineDistance *= 2048;
+			readFromInput = false;
+		}
+
+		deviceContext->CSSetUnorderedAccessViews(0, 1, &m_NULL_UAV, 0);
+		deviceContext->CSSetUnorderedAccessViews(1, 1, &m_NULL_UAV, 0);
+
+		// ####################################################_8_2_####################################################
+
+		// Phase 2 der exklusive Prefix Summe
+		m_curComputeShader = m_ComputeShaderVector[8];
+		deviceContext->CSSetShader(m_curComputeShader, NULL, 0);
+
+		deviceContext->CSSetUnorderedAccessViews(0, 1, &m_SortIndices_UAV, 0);
+		if (backBufferIsInput)
+			deviceContext->CSSetUnorderedAccessViews(1, 1, &m_CellTrianglePairsBackBuffer_UAV, 0);
+		else
+			deviceContext->CSSetUnorderedAccessViews(1, 1, &m_CellTrianglePairs_UAV, 0); 
+			//deviceContext->CSSetUnorderedAccessViews(1, 1, &input_UAV, 0); XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+
+		unsigned long long _2_curInputSize;
+		UINT _2_curLoops, _2_curThreadDistance/*, _2_curStartCombineDistance*/;
+
+		// ermittle die InputSize des ersten Dispatches
+		_2_curInputSize = sortIndicesCountPow2;
+		while (_2_curInputSize > 2048) // teile solange durch 2048, bis ein Wert kleiner als 2048 herauskommt, das ist die inputSize für den ersten Dispatch
+		{
+			_2_curInputSize /= 2048;
+		}
+		_2_curThreadDistance = sortIndicesCountPow2 / _2_curInputSize * 2; // * 2, weil ein Thread ja am Ende 2 Inputs bearbeitet, die Distanz ist also doppelt so groß
+		_2_curLoops = (int)log2(_2_curInputSize);// curInputSize wird nicht durch 2 geteilt, da log2 ja die Basis 2 hat, wir aber am Ende auf 1 kommen wollen, also das Ergebnis nochmal durch 2 teilen
+		bool firstStep = true;
+		while (_2_curInputSize <= (UINT)sortIndicesCountPow2) // beim letzten Schritt ist die inputSize = m_SortIndicesCount, deswegen das <=
+		{
+			int groupCount = (int)ceil(_2_curInputSize / 1024.0f);
+			RadixSort_ExclusivePrefixSumData2 radixSort_ExclusivePrefixSum_Data2 = { (UINT)firstStep, _2_curThreadDistance, _2_curLoops, read2BitsFromHere };
+			deviceContext->UpdateSubresource(m_RadixSort_ExclusivePrefixSumData2_CBuffer, 0, NULL, &radixSort_ExclusivePrefixSum_Data2, 0, 0);
+			deviceContext->CSSetConstantBuffers(0, 1, &m_RadixSort_ExclusivePrefixSumData2_CBuffer);
+			deviceContext->Dispatch(groupCount, 1, 1);
+			_2_curInputSize *= 2048;
+			_2_curThreadDistance /= 2048;
+			_2_curLoops = 11; // ab dem ersten Schritt werden immer 11 Schritte (soviel kann eine Gruppe reduzieren) ausgeführt
+			//_2_curStartCombineDistance /= (UINT)pow (2, _2_curLoops);
+			firstStep = false;
+		}
+
+		deviceContext->CSSetUnorderedAccessViews(0, 1, &m_NULL_UAV, 0);
+		deviceContext->CSSetUnorderedAccessViews(1, 1, &m_NULL_UAV, 0);
+
+		// ####################################################_8_3_####################################################
+		// sortiere mit Hilfe der exklusiven Prefix-Summen
+		m_curComputeShader = m_ComputeShaderVector[9];
+		deviceContext->CSSetShader(m_curComputeShader, NULL, 0);
+
+		deviceContext->CSSetUnorderedAccessViews(0, 1, &m_SortIndices_UAV, 0);
+		if (backBufferIsInput)
+		{
+			deviceContext->CSSetUnorderedAccessViews(1, 1, &m_CellTrianglePairsBackBuffer_UAV, 0);
+			deviceContext->CSSetUnorderedAccessViews(2, 1, &m_CellTrianglePairs_UAV, 0); 
+			//deviceContext->CSSetUnorderedAccessViews(2, 1, &input_UAV, 0); XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+		}
+		else
+		{
+			deviceContext->CSSetUnorderedAccessViews(1, 1, &m_CellTrianglePairs_UAV, 0); 
+			//deviceContext->CSSetUnorderedAccessViews(1, 1, &input_UAV, 0); XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+			deviceContext->CSSetUnorderedAccessViews(2, 1, &m_CellTrianglePairsBackBuffer_UAV, 0);
+		}
+
+		int groupCount = (int)ceil(m_CellTrianglePairsCount / 1024.0f);
 		deviceContext->Dispatch(groupCount, 1, 1);
-		_1_curInputSize /= 2048;
-		_1_curWorkSize = _1_curInputSize / 2;
-		_1_combineDistance *= 2048;
-		readFromInput = false;
+
+		deviceContext->CSSetUnorderedAccessViews(0, 1, &m_NULL_UAV, 0);
+		deviceContext->CSSetUnorderedAccessViews(1, 1, &m_NULL_UAV, 0);
+		deviceContext->CSSetUnorderedAccessViews(2, 1, &m_NULL_UAV, 0);
+
+		backBufferIsInput = !backBufferIsInput;
+		read2BitsFromHere += 2;
+		//_8_SortCellTrianglePairs_GetResult();
 	}
-
-	deviceContext->CSSetUnorderedAccessViews(0, 1, &m_NULL_UAV, 0);
-	deviceContext->CSSetUnorderedAccessViews(1, 1, &m_NULL_UAV, 0);
-
-
-	// Phase 2 der exklusive Prefix Summe
-	m_curComputeShader = m_ComputeShaderVector[8];
-	deviceContext->CSSetShader(m_curComputeShader, NULL, 0);
-
-	deviceContext->CSSetUnorderedAccessViews(0, 1, &m_SortIndices_UAV, 0);
-	//deviceContext->CSSetUnorderedAccessViews(1, 1, &m_CellTrianglePairs_UAV, 0); XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-	deviceContext->CSSetUnorderedAccessViews(1, 1, &input_UAV, 0);
-
-	UINT _2_curInputSize, _2_curLoops, _2_curThreadDistance/*, _2_curStartCombineDistance*/;
-
-	// ermittle die InputSize des ersten Dispatches
-	_2_curInputSize = sortIndicesCountPow2;
-	while (_2_curInputSize > 2048) // teile solange durch 2048, bis ein Wert kleiner als 2048 herauskommt, das ist die inputSize für den ersten Dispatch
-	{
-		_2_curInputSize /= 2048;
-	}
-	_2_curThreadDistance = sortIndicesCountPow2 / _2_curInputSize * 2; // * 2, weil ein Thread ja am Ende 2 Inputs bearbeitet, die Distanz ist also doppelt so groß
-	_2_curLoops = (int)log2(_2_curInputSize);// curInputSize wird nicht durch 2 geteilt, da log2 ja die Basis 2 hat, wir aber am Ende auf 1 kommen wollen, also das Ergebnis nochmal durch 2 teilen
-	bool firstStep = true;
-	read2BitsFromHere = 0;
-	while (_2_curInputSize <= (UINT)sortIndicesCountPow2) // beim letzten Schritt ist die inputSize = m_SortIndicesCount, deswegen das <=
-	{
-		int groupCount = (int)ceil(_2_curInputSize / 1024.0f);
-		RadixSort_ExclusivePrefixSumData2 radixSort_ExclusivePrefixSum_Data2 = { (UINT)firstStep, _2_curThreadDistance, _2_curLoops, read2BitsFromHere };
-		deviceContext->UpdateSubresource(m_RadixSort_ExclusivePrefixSumData2_CBuffer, 0, NULL, &radixSort_ExclusivePrefixSum_Data2, 0, 0);
-		deviceContext->CSSetConstantBuffers(0, 1, &m_RadixSort_ExclusivePrefixSumData2_CBuffer);
-		deviceContext->Dispatch(groupCount, 1, 1);
-		_2_curInputSize *= 2048;
-		_2_curThreadDistance /= 2048;
-		_2_curLoops = 11; // ab dem ersten Schritt werden immer 11 Schritte (soviel kann eine Gruppe reduzieren) ausgeführt
-		//_2_curStartCombineDistance /= (UINT)pow (2, _2_curLoops);
-		firstStep = false;
-	}
-
-	deviceContext->CSSetUnorderedAccessViews(0, 1, &m_NULL_UAV, 0);
-	deviceContext->CSSetUnorderedAccessViews(1, 1, &m_NULL_UAV, 0);
-
-	// sortiere mit Hilfe der exklusiven Prefix-Summen
-	m_curComputeShader = m_ComputeShaderVector[9];
-	deviceContext->CSSetShader(m_curComputeShader, NULL, 0);
-
-	deviceContext->CSSetUnorderedAccessViews(0, 1, &m_SortIndices_UAV, 0);
-	//deviceContext->CSSetUnorderedAccessViews(1, 1, &m_CellTrianglePairs_UAV, 0); XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-	deviceContext->CSSetUnorderedAccessViews(1, 1, &input_UAV, 0);
-	deviceContext->CSSetUnorderedAccessViews(2, 1, &m_CellTrianglePairsBackBuffer_UAV, 0);
-
-	bool b_backBufferIsInput = false;
-	BackBufferIsInput backBufferIsInput = { (UINT)b_backBufferIsInput };
-	deviceContext->UpdateSubresource(m_BackBufferIsInput_CBuffer, 0, NULL, &backBufferIsInput, 0, 0);
-	deviceContext->CSSetConstantBuffers(0, 1, &m_BackBufferIsInput_CBuffer);
-	int groupCount = (int)ceil(m_CellTrianglePairsCount / 1024.0f);
-	deviceContext->Dispatch(groupCount, 1, 1);
-
-	deviceContext->CSSetUnorderedAccessViews(0, 1, &m_NULL_UAV, 0);
-	deviceContext->CSSetUnorderedAccessViews(1, 1, &m_NULL_UAV, 0);
-	deviceContext->CSSetUnorderedAccessViews(2, 1, &m_NULL_UAV, 0);
 
 	SAFERELEASE(input_Buffer);
 	SAFERELEASE(input_UAV);
@@ -901,7 +928,7 @@ void CollisionDetectionManager::Frame()
 
 	_4_GlobalCounterTree();
 	//_4_GlobalCounterTree_GetResult();
-
+	
 	_5_FillTypeTree();
 	//_5_FillTypeTree_GetResult();
 
@@ -912,7 +939,7 @@ void CollisionDetectionManager::Frame()
 	//_7_CellTrianglePairs_GetResult();
 
 	_8_SortCellTrianglePairs();
-	_8_SortCellTrianglePairs_GetResult();
+	//_8_SortCellTrianglePairs_GetResult();
 }
 
 
@@ -1154,21 +1181,60 @@ void CollisionDetectionManager::_8_SortCellTrianglePairs_GetResult()
 {
 	SAFEDELETEARRAY(m_Results8_1);
 	SAFEDELETEARRAY(m_Results8_2);
+	SAFEDELETEARRAY(m_Results8_3);
 	m_Results8_1 = new SortIndices[m_SortIndicesCount];
 	m_Results8_2 = new CellTrianglePair[m_CellTrianglePairsCount];
+	m_Results8_3 = new CellTrianglePair[m_CellTrianglePairsCount];
 	D3D11_MAPPED_SUBRESOURCE MappedResource8_1 = { 0 };
 	D3D11_MAPPED_SUBRESOURCE MappedResource8_2 = { 0 };
+	D3D11_MAPPED_SUBRESOURCE MappedResource8_3 = { 0 };
 	deviceContext->CopyResource(m_Result_Buffer8_1, m_SortIndices_Buffer);
 	deviceContext->CopyResource(m_Result_Buffer8_2, m_CellTrianglePairsBackBuffer_Buffer);
+	deviceContext->CopyResource(m_Result_Buffer8_3, m_CellTrianglePairs_Buffer);
 	deviceContext->Map(m_Result_Buffer8_1, 0, D3D11_MAP_READ, 0, &MappedResource8_1);
 	deviceContext->Map(m_Result_Buffer8_2, 0, D3D11_MAP_READ, 0, &MappedResource8_2);
+	deviceContext->Map(m_Result_Buffer8_3, 0, D3D11_MAP_READ, 0, &MappedResource8_3);
 	_Analysis_assume_(MappedResource8_1.pData);
 	_Analysis_assume_(MappedResource8_2.pData);
+	_Analysis_assume_(MappedResource8_3.pData);
 	assert(MappedResource8_1.pData);
 	assert(MappedResource8_2.pData);
+	assert(MappedResource8_3.pData);
 	// m_BoundingBoxes wird in CreateVertexAndTriangleArray neu initialisiert
 	memcpy(m_Results8_1, MappedResource8_1.pData, m_SortIndicesCount * sizeof(SortIndices));
 	memcpy(m_Results8_2, MappedResource8_2.pData, m_CellTrianglePairsCount * sizeof(CellTrianglePair));
+	memcpy(m_Results8_3, MappedResource8_3.pData, m_CellTrianglePairsCount * sizeof(CellTrianglePair));
 	deviceContext->Unmap(m_Result_Buffer8_1, 0);
 	deviceContext->Unmap(m_Result_Buffer8_2, 0);
-}
+	deviceContext->Unmap(m_Result_Buffer8_3, 0);
+
+	int counter = 0;
+	int counterBackBuffer = 0;
+	for (int i = 0; i < m_CellTrianglePairsCount; i++)
+	{
+		CellTrianglePair curCellTrianglePair = m_Results8_2[i];
+		if (curCellTrianglePair.cellID != 0)
+			counterBackBuffer++;
+		curCellTrianglePair = m_Results8_3[i];
+		if (curCellTrianglePair.cellID != 0)
+			counter++;
+	}
+	cout << "Counter: " << counter << endl;
+	cout << "CounterBackBuffer: " << counterBackBuffer << endl;
+
+	int wrongIDCounter = 0;
+	for (int i = 0; i < m_SortIndicesCount; i++)
+	{
+		SortIndices curSortIndices = m_Results8_1[i];
+		SortIndices nextSortIndices = m_Results8_1[i + 1];
+		int doubleCounter = 0;
+		for (int j = 0; j < 4; j++) 
+		{
+			if (curSortIndices.array[j] != nextSortIndices.array[j])
+				doubleCounter++;
+		}
+		if (doubleCounter != 1)
+			wrongIDCounter++;
+	}
+	cout << "wrong IDs: " << wrongIDCounter << endl;
+ }

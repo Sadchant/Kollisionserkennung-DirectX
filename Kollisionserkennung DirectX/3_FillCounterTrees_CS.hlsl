@@ -61,7 +61,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
     //pow(2^x, y) = 1 << x * y
 
     // iteriere über alle Level im Tree, <= weil: Bei SUBDIVS = 1 gibt es eine Unterteilung, also zwei unterschiedliche Level
-    for (int level = 0; level <= SUBDIVS; level++)
+    for (int level = 1; level <= SUBDIVS; level++)
     {
         uint curRes = pow(2, level); // wie viele Gridzellen gibt es im Level pro Dimension, dass die for-Schleife gerade bearbeitet, 2: Auflösung pro Dimension, 8 wäre Anzahl der Zellen im 3D-Raum
         // curScale: um welchen Wert müssen Koordinaten in der Szene skaliert werden, damit bei der aktuellen Auflösung die Gridzellen in jeder Dimension auf

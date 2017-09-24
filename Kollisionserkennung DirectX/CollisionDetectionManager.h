@@ -93,12 +93,6 @@ private:
 		int read2BitsFromHere;
 	};
 
-	__declspec(align(16)) // Structs in einem ConstantBuffer müpssen auf 16 Byte aligned sein
-		struct BackBufferIsInput
-	{
-		UINT bool_BackBufferIsInput;
-	};
-
 
 	void InitComputeShaderVector();
 	void CreateSceneBuffersAndViews();
@@ -170,7 +164,6 @@ private:
 	ID3D11Buffer* m_Loops_CBuffer;
 	ID3D11Buffer* m_RadixSort_ExclusivePrefixSumData_CBuffer;
 	ID3D11Buffer* m_RadixSort_ExclusivePrefixSumData2_CBuffer;
-	ID3D11Buffer* m_BackBufferIsInput_CBuffer;
 
 	// Test-ResultBuffer
 	BoundingBox* m_Results1; // wird von der GPU befüllt!
@@ -184,6 +177,7 @@ private:
 	CellTrianglePair* m_Results7; // wird von der GPU befüllt!
 	SortIndices* m_Results8_1; // wird von der GPU befüllt!
 	CellTrianglePair* m_Results8_2; // wird von der GPU befüllt!
+	CellTrianglePair* m_Results8_3; // wird von der GPU befüllt!
 
 	// langsame (CPU-Zugriff!) ResultBuffer, in die ein Ergebnis von der GPU kopiert wird
 	ID3D11Buffer* m_Result_Buffer1;
@@ -197,6 +191,7 @@ private:
 	ID3D11Buffer* m_Result_Buffer7;
 	ID3D11Buffer* m_Result_Buffer8_1;
 	ID3D11Buffer* m_Result_Buffer8_2;
+	ID3D11Buffer* m_Result_Buffer8_3;
 
 
 

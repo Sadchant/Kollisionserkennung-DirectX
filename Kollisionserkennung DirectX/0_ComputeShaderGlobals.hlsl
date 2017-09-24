@@ -41,13 +41,13 @@ SortIndices getSortIndicesFromInput(uint id, uint cellTrianglePairsSize, uint re
         uint bit0 = (cellTrianglePair.cellID >> read2BitsFromHere) & 1;
         uint bit1 = (cellTrianglePair.cellID >> read2BitsFromHere + 1) & 1;
         if (bit1 == 0 && bit0 == 0)
-            resultSortIndices.array[0] = 1;
-        else if (bit1 == 0 && bit0 == 1)
-            resultSortIndices.array[1] = 1;
-        else if (bit1 == 1 && bit0 == 0)
-            resultSortIndices.array[2] = 1;
-        else if (bit1 == 1 && bit0 == 1)
             resultSortIndices.array[3] = 1;
+        else if (bit1 == 0 && bit0 == 1)
+            resultSortIndices.array[2] = 1;
+        else if (bit1 == 1 && bit0 == 0)
+            resultSortIndices.array[1] = 1;
+        else if (bit1 == 1 && bit0 == 1)
+            resultSortIndices.array[0] = 1;
     }
     return resultSortIndices;
 }

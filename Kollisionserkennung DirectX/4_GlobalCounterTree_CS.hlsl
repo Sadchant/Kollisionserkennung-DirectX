@@ -23,6 +23,11 @@ void main(uint3 DTid : SV_DispatchThreadID)
     // obligatorische Überprüfung für den Block, der "zu wenig" zu tun hat
     if (id >= treeSizeInLevel[SUBDIVS].x)
         return;
+    if (id == 0) // sollte die id 0 sein ist es die Zelle in der die gesamte Szene liegt,
+    {
+        globalCounterTree[id] = 4294967295; //trage den MaximalWert von uint ein, damit die Zelle nicht weniger Überprüfungen als ihre 8 Kinder hat
+        return;
+    }
     uint objectsInThisCellCount = 0; // wie viele Objekte besitzen Dreiecke, die in der von diesem Thread bearbeiteten Zelle liegen?
     uint boundingBoxCounts[MAXCOLLIDINGOBJECTS]; // pro Objekt die Anzahl der Dreiecke, ohne 0er, hieraus wird der letztendliche intersectionTestCount berechnet
 
@@ -51,6 +56,5 @@ void main(uint3 DTid : SV_DispatchThreadID)
             intersectionTestCount += boundingBoxCounts[j] * boundingBoxCounts[k];
         }
     }
-    // speichere das Ergebnis im Output-Array
-    globalCounterTree[id] = intersectionTestCount;
+    globalCounterTree[id] = intersectionTestCount;// speichere das Ergebnis im Output-Array
 }
