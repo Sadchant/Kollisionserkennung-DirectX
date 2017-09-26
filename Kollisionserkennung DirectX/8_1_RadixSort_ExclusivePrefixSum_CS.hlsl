@@ -13,7 +13,7 @@ cbuffer radixSort_ExclusivePrefixSum_Data : register(b0)
     uint startCombineDistance;
 }
 
-[numthreads(_8_1_RADIXSORT_EXCLUSIVEPREFIXSUM_XTHREADS, _8_1_RADIXSORT_EXCLUSIVEPREFIXSUM_YTHREADS, _8_1_RADIXSORT_EXCLUSIVEPREFIXSUM_ZTHREADS)]
+[numthreads(LINEAR_XTHREADS, LINEAR_YTHREADS, LINEAR_ZTHREADS)]
 void main(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadID)
 {
     uint id = DTid.x;

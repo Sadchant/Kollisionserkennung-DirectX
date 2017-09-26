@@ -6,7 +6,7 @@ RWStructuredBuffer<CellTrianglePair> cellTrianglePairsInput : register(u1);
 RWStructuredBuffer<CellTrianglePair> cellTrianglePairsOutput : register(u2);
 
 
-[numthreads(_8_3_RADIXSORT_SORT_XTHREADS, _8_3_RADIXSORT_SORT_YTHREADS, _8_3_RADIXSORT_SORT_ZTHREADS)]
+[numthreads(LINEAR_XTHREADS, LINEAR_YTHREADS, LINEAR_ZTHREADS)]
 void main( uint3 DTid : SV_DispatchThreadID )
 {
     uint id = DTid.x;

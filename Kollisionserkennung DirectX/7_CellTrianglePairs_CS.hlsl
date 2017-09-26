@@ -27,7 +27,7 @@ cbuffer TreeSizeInLevel : register(b1)
 // und im leafIndexTree die gleiche Id haben), überprüfe, wenn die aktuell bearbeitete Zelle nicht am jeweiligen Rand liegt,
 // ob die letzte Zelle in x-, y-, oder z- Richtung die selbe ID hat. Wenn ja wurde sie schon bearbeitet und der Eintrag 
 // existiert schon.
-[numthreads(_7_CELLTRIANGLEPAIRS_XTHREADS, _7_CELLTRIANGLEPAIRS_YTHREADS, _7_CELLTRIANGLEPAIRS_ZTHREADS)]
+[numthreads(LINEAR_XTHREADS, LINEAR_YTHREADS, LINEAR_ZTHREADS)]
 void main(uint3 DTid : SV_DispatchThreadID)
 {
     uint id = DTid.x;

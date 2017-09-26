@@ -20,7 +20,7 @@ cbuffer TreeSizeInLevel : register(b1)
     // zum uint4 auseinanderbauen auszuführen)
 };
 
-[numthreads(_3_FILLCOUNTERTREES_XTHREADS, _3_FILLCOUNTERTREES_YTHREADS, _3_FILLCOUNTERTREES_ZTHREADS)]
+[numthreads(LINEAR_XTHREADS, LINEAR_YTHREADS, LINEAR_ZTHREADS)]
 void main(uint3 DTid : SV_DispatchThreadID)
 {
     uint id = DTid.x;

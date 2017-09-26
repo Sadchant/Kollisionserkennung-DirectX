@@ -787,7 +787,7 @@ void CollisionDetectionManager::_8_SortCellTrianglePairs()
 	int read2BitsFromHere = 0;
 	bool backBufferIsInput = false;
 
-	while (read2BitsFromHere < 32)
+	while (read2BitsFromHere < 22)
 	{
 		// ####################################################_8_1_####################################################
 		m_curComputeShader = m_ComputeShaderVector[7];
@@ -830,7 +830,7 @@ void CollisionDetectionManager::_8_SortCellTrianglePairs()
 
 		deviceContext->CSSetUnorderedAccessViews(0, 1, &m_NULL_UAV, 0);
 		deviceContext->CSSetUnorderedAccessViews(1, 1, &m_NULL_UAV, 0);
-
+		
 		// ####################################################_8_2_####################################################
 
 		// Phase 2 der exklusive Prefix Summe
@@ -848,22 +848,24 @@ void CollisionDetectionManager::_8_SortCellTrianglePairs()
 		UINT _2_curLoops, _2_curThreadDistance/*, _2_curStartCombineDistance*/;
 
 		// ermittle die InputSize des ersten Dispatches
-		_2_curInputSize = sortIndicesCountPow2;
+		_2_curInputSize = sortIndicesCountPow2; // DURCH 2 HÖCHSTWAHRSCHEINLICH HIER GUCKEN!!!
 		while (_2_curInputSize > 2048) // teile solange durch 2048, bis ein Wert kleiner als 2048 herauskommt, das ist die inputSize für den ersten Dispatch
 		{
 			_2_curInputSize /= 2048;
 		}
-		_2_curThreadDistance = sortIndicesCountPow2 / _2_curInputSize * 2; // * 2, weil ein Thread ja am Ende 2 Inputs bearbeitet, die Distanz ist also doppelt so groß
+		int _2_curWorkSize = _2_curInputSize / 2;
+		_2_curThreadDistance = sortIndicesCountPow2 / _2_curWorkSize; // * 2, weil ein Thread ja am Ende 2 Inputs bearbeitet, die Distanz ist also doppelt so groß
 		_2_curLoops = (int)log2(_2_curInputSize);// curInputSize wird nicht durch 2 geteilt, da log2 ja die Basis 2 hat, wir aber am Ende auf 1 kommen wollen, also das Ergebnis nochmal durch 2 teilen
 		bool firstStep = true;
 		while (_2_curInputSize <= (UINT)sortIndicesCountPow2) // beim letzten Schritt ist die inputSize = m_SortIndicesCount, deswegen das <=
 		{
-			int groupCount = (int)ceil(_2_curInputSize / 1024.0f);
+			int groupCount = (int)ceil(_2_curWorkSize / 1024.0f);
 			RadixSort_ExclusivePrefixSumData2 radixSort_ExclusivePrefixSum_Data2 = { (UINT)firstStep, _2_curThreadDistance, _2_curLoops, read2BitsFromHere };
 			deviceContext->UpdateSubresource(m_RadixSort_ExclusivePrefixSumData2_CBuffer, 0, NULL, &radixSort_ExclusivePrefixSum_Data2, 0, 0);
 			deviceContext->CSSetConstantBuffers(0, 1, &m_RadixSort_ExclusivePrefixSumData2_CBuffer);
 			deviceContext->Dispatch(groupCount, 1, 1);
 			_2_curInputSize *= 2048;
+			_2_curWorkSize = _2_curInputSize / 2;
 			_2_curThreadDistance /= 2048;
 			_2_curLoops = 11; // ab dem ersten Schritt werden immer 11 Schritte (soviel kann eine Gruppe reduzieren) ausgeführt
 			//_2_curStartCombineDistance /= (UINT)pow (2, _2_curLoops);
@@ -939,7 +941,7 @@ void CollisionDetectionManager::Frame()
 	//_7_CellTrianglePairs_GetResult();
 
 	_8_SortCellTrianglePairs();
-	//_8_SortCellTrianglePairs_GetResult();
+	_8_SortCellTrianglePairs_GetResult();
 }
 
 
@@ -1209,20 +1211,32 @@ void CollisionDetectionManager::_8_SortCellTrianglePairs_GetResult()
 	deviceContext->Unmap(m_Result_Buffer8_3, 0);
 
 	int counter = 0;
-	int counterBackBuffer = 0;
-	for (int i = 0; i < m_CellTrianglePairsCount; i++)
+	int maxCellSize = 0;
+	CellTrianglePair tempCellTrianglePair;
+	CellTrianglePair crazyCellTrianglePair;
+	for (int i = 0; i < m_CellTrianglePairsCount-1; i++)
 	{
 		CellTrianglePair curCellTrianglePair = m_Results8_2[i];
-		if (curCellTrianglePair.cellID != 0)
-			counterBackBuffer++;
-		curCellTrianglePair = m_Results8_3[i];
-		if (curCellTrianglePair.cellID != 0)
+		CellTrianglePair nextCellTrianglePair = m_Results8_2[i + 1];
+		if (curCellTrianglePair.cellID == nextCellTrianglePair.cellID)
+		{
 			counter++;
+			tempCellTrianglePair = curCellTrianglePair;
+		}
+		else
+		{
+			cout << counter << endl;
+			if (counter > maxCellSize) 
+			{
+				maxCellSize = counter;
+				crazyCellTrianglePair = tempCellTrianglePair;
+			}
+			counter = 0;
+		}
 	}
-	cout << "Counter: " << counter << endl;
-	cout << "CounterBackBuffer: " << counterBackBuffer << endl;
+	cout << "MaxCellSize: " << maxCellSize << endl;
 
-	int wrongIDCounter = 0;
+	/*int wrongIDCounter = 0;
 	for (int i = 0; i < m_SortIndicesCount; i++)
 	{
 		SortIndices curSortIndices = m_Results8_1[i];
@@ -1236,5 +1250,5 @@ void CollisionDetectionManager::_8_SortCellTrianglePairs_GetResult()
 		if (doubleCounter != 1)
 			wrongIDCounter++;
 	}
-	cout << "wrong IDs: " << wrongIDCounter << endl;
+	cout << "wrong IDs: " << wrongIDCounter << endl;*/
  }
