@@ -16,6 +16,12 @@ struct SortIndices
     uint array[4];
 };
 
+struct TrianglePair
+{
+    uint triangleID1;
+    uint triangleID2;
+};
+
 // berechne aus 3D-Koordinaten, der aktuellen Größe des Grids und dem Level-Offset die 1-dimensionale ID
 uint get1DID(uint3 cell3DID, uint resolution, uint offset)
 {

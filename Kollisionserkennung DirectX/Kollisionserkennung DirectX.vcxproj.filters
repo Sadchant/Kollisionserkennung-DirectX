@@ -159,6 +159,7 @@
     <None Include="8_1_RadixSort_ExclusivePrefixSum_CS.hlsl" />
     <None Include="8_2_RadixSort_ExclusivePrefixSum_CS.hlsl" />
     <None Include="8_3_RadixSort_Sort_CS.hlsl" />
+    <None Include="9_FindTrianglePairs_CS.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Kollisionserkennung DirectX.rc">
