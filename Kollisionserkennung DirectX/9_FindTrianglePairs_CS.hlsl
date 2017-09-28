@@ -10,12 +10,9 @@ bool checkBoundingBoxIntersection(uint boundingBoxID1, uint boundingBoxID2)
 {
     BoundingBox boundingBox1 = boundingBoxes[boundingBoxID1];
     BoundingBox boundingBox2 = boundingBoxes[boundingBoxID2];
-    return ((boundingBox1.minPoint.x > boundingBox2.minPoint.x && boundingBox1.minPoint.x < boundingBox2.maxPoint.x) ||
-            (boundingBox1.maxPoint.x > boundingBox2.minPoint.x && boundingBox1.maxPoint.x < boundingBox2.maxPoint.x) ||
-            (boundingBox1.minPoint.y > boundingBox2.minPoint.y && boundingBox1.minPoint.y < boundingBox2.maxPoint.y) ||
-            (boundingBox1.maxPoint.y > boundingBox2.minPoint.y && boundingBox1.maxPoint.y < boundingBox2.maxPoint.y) ||
-            (boundingBox1.minPoint.z > boundingBox2.minPoint.z && boundingBox1.minPoint.z < boundingBox2.maxPoint.z) ||
-            (boundingBox1.maxPoint.z > boundingBox2.minPoint.z && boundingBox1.maxPoint.z < boundingBox2.maxPoint.z));
+    return !(((boundingBox1.maxPoint.x < boundingBox2.minPoint.x) || (boundingBox1.minPoint.x > boundingBox2.maxPoint.x)) ||
+             ((boundingBox1.maxPoint.y < boundingBox2.minPoint.y) || (boundingBox1.minPoint.y > boundingBox2.maxPoint.y)) ||
+             ((boundingBox1.maxPoint.z < boundingBox2.minPoint.z) || (boundingBox1.minPoint.z > boundingBox2.maxPoint.z)));
 }
 
 
@@ -34,7 +31,8 @@ void main(uint3 DTid : SV_DispatchThreadID)
         return;
     uint curID = id + 1;
     CellTrianglePair nextCellTrianglePair = cellTrianglePairs[curID];
-    while (curCellTrianglePair.cellID == nextCellTrianglePair.cellID && nextCellTrianglePair.cellID != 0)
+    int counter = 0;
+    while ((curCellTrianglePair.cellID == nextCellTrianglePair.cellID) && (nextCellTrianglePair.cellID != 0)&& counter < 100)
     {
         if (curCellTrianglePair.objectID != nextCellTrianglePair.objectID)
         {
@@ -47,6 +45,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
         }
         curID++;
         nextCellTrianglePair = cellTrianglePairs[curID];
+        counter++;
     }
     //TrianglePair newTrianglePair = { curCellTrianglePair.cellID, 12 };
     //trianglePairs.Append(newTrianglePair);

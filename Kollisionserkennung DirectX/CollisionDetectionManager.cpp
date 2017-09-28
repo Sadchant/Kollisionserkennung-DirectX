@@ -142,6 +142,8 @@ void CollisionDetectionManager::InitComputeShaderVector()
 	m_ComputeShaderVector.push_back(pTempComputeShader);
 	pTempComputeShader = CreateComputeShader(L"../Kollisionserkennung DirectX/9_FindTrianglePairs_CS.hlsl");
 	m_ComputeShaderVector.push_back(pTempComputeShader);
+	pTempComputeShader = CreateComputeShader(L"../Kollisionserkennung DirectX/10_TriangleIntersections_CS.hlsl");
+	m_ComputeShaderVector.push_back(pTempComputeShader);
 }
 
 // kopiert Punkte und Dreiecke aller Objekte in objects in groﬂe Buffer zusammen, in LastObjectIndices wird sich gemerkt, welche Dreiecke
@@ -982,7 +984,7 @@ void CollisionDetectionManager::Frame()
 	_8_SortCellTrianglePairs_GetResult();
 
 	_9_FindTrianglePairs(backBufferIsInput);
-	_9_FindTrianglePairs_GetResult();
+	//_9_FindTrianglePairs_GetResult();
 }
 
 

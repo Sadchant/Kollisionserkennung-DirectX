@@ -52,8 +52,6 @@ private:
 
 	// Gehört wegen der Umbennenung (hieß ja eig GraphicsClass) zwar nicht mehr ganz in eine Szene, aber was solls
 	TextClass* m_Text;
-
-
 };
 
 #endif
