@@ -38,7 +38,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
         {
             if (checkBoundingBoxIntersection(curCellTrianglePair.triangleID, nextCellTrianglePair.triangleID))
             {
-                TrianglePair newTrianglePair = { curCellTrianglePair.triangleID, nextCellTrianglePair.triangleID };
+                TrianglePair newTrianglePair = { curCellTrianglePair.triangleID, nextCellTrianglePair.triangleID, curCellTrianglePair.objectID, nextCellTrianglePair.objectID };
                 trianglePairs.Append(newTrianglePair);
 
             }

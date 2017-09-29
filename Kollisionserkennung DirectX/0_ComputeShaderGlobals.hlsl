@@ -20,6 +20,8 @@ struct TrianglePair
 {
     uint triangleID1;
     uint triangleID2;
+	uint objectID1;
+	uint objectID2;
 };
 
 // berechne aus 3D-Koordinaten, der aktuellen Größe des Grids und dem Level-Offset die 1-dimensionale ID

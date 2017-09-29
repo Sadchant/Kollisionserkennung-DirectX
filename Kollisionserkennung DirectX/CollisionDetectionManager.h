@@ -59,6 +59,8 @@ private:
 	{
 		UINT triangleID1;
 		UINT triangleID2;
+		UINT objectID1;
+		UINT objectID2;
 	};
 
 	__declspec(align(16)) // Structs in einem ConstantBuffer müpssen auf 16 Byte aligned sein
@@ -115,6 +117,7 @@ private:
 	void _7_CellTrianglePairs();
 	bool _8_SortCellTrianglePairs();
 	void _9_FindTrianglePairs(bool backBufferIsInput);
+	void _10_TriangleIntersections();
 
 	void _1_BoundingBoxes_GetResult();
 	void _2_SceneCoundingBox_GetResult();
@@ -125,6 +128,7 @@ private:
 	void _7_CellTrianglePairs_GetResult();
 	void _8_SortCellTrianglePairs_GetResult();
 	void _9_FindTrianglePairs_GetResult();
+	void _10_TriangleIntersections_GetResult();
 
 	ID3D11Device* device;
 	ID3D11DeviceContext* deviceContext;
@@ -163,6 +167,8 @@ private:
 	ID3D11Buffer* m_SortIndices_Buffer; // Indices für den RadixSort, wo wird pro Bit hinsortiert?
 	ID3D11Buffer* m_CellTrianglePairsBackBuffer_Buffer; // dient als BackBuffer beim Sortieren
 	ID3D11Buffer* m_TrianglePairs_Buffer; // dient als BackBuffer beim Sortieren
+	ID3D11Buffer* m_IntersectingObjects_Buffer; // dient als BackBuffer beim Sortieren
+	ID3D11Buffer* m_IntersectCenters_Buffer; // dient als BackBuffer beim Sortieren
 
 
 	// ConstantBuffer:
@@ -188,6 +194,8 @@ private:
 	CellTrianglePair* m_Results8_2; // wird von der GPU befüllt!
 	CellTrianglePair* m_Results8_3; // wird von der GPU befüllt!
 	TrianglePair* m_Results9; // wird von der GPU befüllt!
+	UINT* m_Results10_1; // wird von der GPU befüllt!
+	Vertex* m_Results10_2; // wird von der GPU befüllt!
 
 	// langsame (CPU-Zugriff!) ResultBuffer, in die ein Ergebnis von der GPU kopiert wird
 	ID3D11Buffer* m_Result_Buffer1;
@@ -203,6 +211,8 @@ private:
 	ID3D11Buffer* m_Result_Buffer8_2;
 	ID3D11Buffer* m_Result_Buffer8_3;
 	ID3D11Buffer* m_Result_Buffer9;
+	ID3D11Buffer* m_Result_Buffer10_1;
+	ID3D11Buffer* m_Result_Buffer10_2;
 
 
 
@@ -225,7 +235,7 @@ private:
 	ID3D11UnorderedAccessView* m_SortIndices_UAV;
 	ID3D11UnorderedAccessView* m_CellTrianglePairsBackBuffer_UAV;
 	ID3D11UnorderedAccessView* m_TrianglePairs_UAV;
-
-
+	ID3D11UnorderedAccessView* m_IntersectingObjects_UAV;
+	ID3D11UnorderedAccessView* m_IntersectCenters_UAV;
 };
 
