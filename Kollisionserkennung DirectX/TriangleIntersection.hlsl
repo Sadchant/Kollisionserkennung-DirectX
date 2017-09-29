@@ -84,52 +84,80 @@ int tri_tri_overlap_test_2d(double p1[2], double q1[2], double r1[2],
                         dest[2]=v1[2]-v2[2]; 
 
 
-#define SCALAR(dest,alpha,v) dest[0] = alpha * v[0]; \
+#define OLD_SCALAR(dest,alpha,v) dest[0] = alpha * v[0]; \
                              dest[1] = alpha * v[1]; \
                              dest[2] = alpha * v[2];
 
 
 
-#define CHECK_MIN_MAX(p1,q1,r1,p2,q2,r2) {\
-  v1 = p2 - q1;
-v2 = p1 - q1;
-  N1 = cross(v1,v2);
-  v1 = q2 - q1;
-  if (dot(v1, N1) > 0.0f) return 0; \
-	  v1 = p2 - p1;
-  v2 = r1 - p1;
-  N1 = cross(v1, v2);
-  v1 = r2 - p1;
-  if (dot(v1,N1) > 0.0f) return 0;\
-  else return 1; }
+bool CHECK_MIN_MAX(p1, q1, r1, p2, q2, r2) {
+	v1 = p2 - q1;
+	v2 = p1 - q1;
+	N1 = cross(v1, v2);
+	v1 = q2 - q1;
+	if (dot(v1, N1) > 0.0f) 
+		return false;
+	v1 = p2 - p1;
+	v2 = r1 - p1;
+	N1 = cross(v1, v2);
+	v1 = r2 - p1;
+	if (dot(v1, N1) > 0.0f) 
+		return false;
+	else 
+		return true;
+}
 
 
 
 /* Permutation in a canonical form of T2's vertices */
 
-#define TRI_TRI_3D(p1,q1,r1,p2,q2,r2,dp2,dq2,dr2) { \
-  if (dp2 > 0.0f) { \
-     if (dq2 > 0.0f) CHECK_MIN_MAX(p1,r1,q1,r2,p2,q2) \
-     else if (dr2 > 0.0f) CHECK_MIN_MAX(p1,r1,q1,q2,r2,p2)\
-     else CHECK_MIN_MAX(p1,q1,r1,p2,q2,r2) }\
-  else if (dp2 < 0.0f) { \
-    if (dq2 < 0.0f) CHECK_MIN_MAX(p1,q1,r1,r2,p2,q2)\
-    else if (dr2 < 0.0f) CHECK_MIN_MAX(p1,q1,r1,q2,r2,p2)\
-    else CHECK_MIN_MAX(p1,r1,q1,p2,q2,r2)\
-  } else { \
-    if (dq2 < 0.0f) { \
-      if (dr2 >= 0.0f)  CHECK_MIN_MAX(p1,r1,q1,q2,r2,p2)\
-      else CHECK_MIN_MAX(p1,q1,r1,p2,q2,r2)\
-    } \
-    else if (dq2 > 0.0f) { \
-      if (dr2 > 0.0f) CHECK_MIN_MAX(p1,r1,q1,p2,q2,r2)\
-      else  CHECK_MIN_MAX(p1,q1,r1,q2,r2,p2)\
-    } \
-    else  { \
-      if (dr2 > 0.0f) CHECK_MIN_MAX(p1,q1,r1,r2,p2,q2)\
-      else if (dr2 < 0.0f) CHECK_MIN_MAX(p1,r1,q1,r2,p2,q2)\
-      else return coplanar_tri_tri3d(p1,q1,r1,p2,q2,r2,N1,N2);\
-     }}}
+bool TRI_TRI_3D(p1, q1, r1, p2, q2, r2, dp2, dq2, dr2) 
+{
+	if (dp2 > 0.0f)
+	{
+		if (dq2 > 0.0f)
+			return CHECK_MIN_MAX(p1, r1, q1, r2, p2, q2);
+		else if (dr2 > 0.0f)
+			return CHECK_MIN_MAX(p1, r1, q1, q2, r2, p2);
+		else
+			return CHECK_MIN_MAX(p1, q1, r1, p2, q2, r2);
+	}
+	else if (dp2 < 0.0f)
+	{
+		if (dq2 < 0.0f)
+			return CHECK_MIN_MAX(p1, q1, r1, r2, p2, q2);
+		else if (dr2 < 0.0f)
+			return CHECK_MIN_MAX(p1, q1, r1, q2, r2, p2)
+		else
+			return CHECK_MIN_MAX(p1, r1, q1, p2, q2, r2)
+	}
+	else
+	{
+		if (dq2 < 0.0f)
+		{
+			if (dr2 >= 0.0f)
+				return CHECK_MIN_MAX(p1, r1, q1, q2, r2, p2);
+			else
+				return CHECK_MIN_MAX(p1, q1, r1, p2, q2, r2);
+		}
+		else if (dq2 > 0.0f)
+		{
+			if (dr2 > 0.0f)
+				return CHECK_MIN_MAX(p1, r1, q1, p2, q2, r2);
+			else
+				return CHECK_MIN_MAX(p1, q1, r1, q2, r2, p2);
+		}
+		else
+		{
+			if (dr2 > 0.0f)
+				return CHECK_MIN_MAX(p1, q1, r1, r2, p2, q2);
+			else if (dr2 < 0.0f)
+				return CHECK_MIN_MAX(p1, r1, q1, r2, p2, q2);
+			else
+				return coplanar_tri_tri3d(p1, q1, r1, p2, q2, r2, N1, N2);
+		}
+	}
+}
 
 
 
@@ -140,13 +168,11 @@ v2 = p1 - q1;
 */
 
 
-int tri_tri_overlap_test_3d(double p1[3], double q1[3], double r1[3],
-
-	double p2[3], double q2[3], double r2[3])
+int tri_tri_overlap_test_3d(float3 p1, float3 q1, float3 r1, float3 p2, float3 q2, float3 r2)
 {
-	double dp1, dq1, dr1, dp2, dq2, dr2;
-	double v1[3], v2[3];
-	double N1[3], N2[3];
+	float dp1, dq1, dr1, dp2, dq2, dr2;
+	float3 v1, v2;
+	float3 N1, N2;
 
 	/* Compute distance signs  of p1, q1 and r1 to the plane of
 	triangle(p2,q2,r2) */
@@ -163,7 +189,8 @@ int tri_tri_overlap_test_3d(double p1[3], double q1[3], double r1[3],
 		v1 = r1 - r2;
 		dr1 = dot(v1, N2);
 
-	if (((dp1 * dq1) > 0.0f) && ((dp1 * dr1) > 0.0f))  return 0;
+	if (((dp1 * dq1) > 0.0f) && ((dp1 * dr1) > 0.0f))  
+		return 0;
 
 	/* Compute distance signs  of p2, q2 and r2 to the plane of
 	triangle(p1,q1,r1) */
@@ -186,28 +213,41 @@ int tri_tri_overlap_test_3d(double p1[3], double q1[3], double r1[3],
 
 
 	if (dp1 > 0.0f) {
-		if (dq1 > 0.0f) TRI_TRI_3D(r1, p1, q1, p2, r2, q2, dp2, dr2, dq2)
-		else if (dr1 > 0.0f) TRI_TRI_3D(q1, r1, p1, p2, r2, q2, dp2, dr2, dq2)
-		else TRI_TRI_3D(p1, q1, r1, p2, q2, r2, dp2, dq2, dr2)
+		if (dq1 > 0.0f)
+			return TRI_TRI_3D(r1, p1, q1, p2, r2, q2, dp2, dr2, dq2);
+		else if (dr1 > 0.0f)
+			return TRI_TRI_3D(q1, r1, p1, p2, r2, q2, dp2, dr2, dq2);
+		else
+			return TRI_TRI_3D(p1, q1, r1, p2, q2, r2, dp2, dq2, dr2);
 	}
 	else if (dp1 < 0.0f) {
-		if (dq1 < 0.0f) TRI_TRI_3D(r1, p1, q1, p2, q2, r2, dp2, dq2, dr2)
-		else if (dr1 < 0.0f) TRI_TRI_3D(q1, r1, p1, p2, q2, r2, dp2, dq2, dr2)
-		else TRI_TRI_3D(p1, q1, r1, p2, r2, q2, dp2, dr2, dq2)
+		if (dq1 < 0.0f)
+			return TRI_TRI_3D(r1, p1, q1, p2, q2, r2, dp2, dq2, dr2);
+		else if (dr1 < 0.0f)
+			return TRI_TRI_3D(q1, r1, p1, p2, q2, r2, dp2, dq2, dr2);
+		else
+			return TRI_TRI_3D(p1, q1, r1, p2, r2, q2, dp2, dr2, dq2);
 	}
 	else {
 		if (dq1 < 0.0f) {
-			if (dr1 >= 0.0f) TRI_TRI_3D(q1, r1, p1, p2, r2, q2, dp2, dr2, dq2)
-			else TRI_TRI_3D(p1, q1, r1, p2, q2, r2, dp2, dq2, dr2)
+			if (dr1 >= 0.0f)
+				return TRI_TRI_3D(q1, r1, p1, p2, r2, q2, dp2, dr2, dq2);
+			else
+				return TRI_TRI_3D(p1, q1, r1, p2, q2, r2, dp2, dq2, dr2);
 		}
 		else if (dq1 > 0.0f) {
-			if (dr1 > 0.0f) TRI_TRI_3D(p1, q1, r1, p2, r2, q2, dp2, dr2, dq2)
-			else TRI_TRI_3D(q1, r1, p1, p2, q2, r2, dp2, dq2, dr2)
+			if (dr1 > 0.0f)
+				return TRI_TRI_3D(p1, q1, r1, p2, r2, q2, dp2, dr2, dq2);
+			else
+				return TRI_TRI_3D(q1, r1, p1, p2, q2, r2, dp2, dq2, dr2);
 		}
 		else {
-			if (dr1 > 0.0f) TRI_TRI_3D(r1, p1, q1, p2, q2, r2, dp2, dq2, dr2)
-			else if (dr1 < 0.0f) TRI_TRI_3D(r1, p1, q1, p2, r2, q2, dp2, dr2, dq2)
-			else return coplanar_tri_tri3d(p1, q1, r1, p2, q2, r2, N1, N2);
+			if (dr1 > 0.0f)
+				return TRI_TRI_3D(r1, p1, q1, p2, q2, r2, dp2, dq2, dr2);
+			else if (dr1 < 0.0f)
+				return TRI_TRI_3D(r1, p1, q1, p2, r2, q2, dp2, dr2, dq2);
+			else 
+				return coplanar_tri_tri3d(p1, q1, r1, p2, q2, r2, N1, N2);
 		}
 	}
 };
