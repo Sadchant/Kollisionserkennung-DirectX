@@ -79,7 +79,7 @@ int tri_tri_overlap_test_2d(double p1[2], double q1[2], double r1[2],
 
 
 
-#define SUB(dest,v1,v2) dest[0]=v1[0]-v2[0]; \
+#define OLD_SUB(dest,v1,v2) dest[0]=v1[0]-v2[0]; \
                         dest[1]=v1[1]-v2[1]; \
                         dest[2]=v1[2]-v2[2]; 
 
@@ -304,12 +304,12 @@ if (dot(v, N) > 0.0f) {
 					v1 = p1 - p2;
 				v2 = p1 - r1;
 				alpha = dot(v1, N2) / dot(v2, N2); \
-					SCALAR(v1, alpha, v2) \
+					v1 = alpha * v2;
 					source = p1 - v1;
 				v1 = p2 - p1;
 				v2 = p2 - r2;
 				alpha = dot(v1, N1) / dot(v2, N1); \
-					SCALAR(v1, alpha, v2) \
+					v1 = alpha * v2;
 					target = p2 - v1;
 					return 1; \
 			}
@@ -317,13 +317,13 @@ if (dot(v, N) > 0.0f) {
 				\
 					v1 = p2 - p1;
 				v2 = p2 - q2;
-					alpha = dot(v1, N1) / dot(v2, N1); \
-					SCALAR(v1, alpha, v2) \
+				alpha = dot(v1, N1) / dot(v2, N1); \
+					v1 = alpha * v2;
 						source = p2 - v1;
 					v1 = p2 - p1;
 					v2 = p2 - r2;
 					alpha = dot(v1, N1) / dot(v2, N1); \
-						SCALAR(v1, alpha, v2) \
+						v1 = alpha * v2;
 						target = p2 - v1;
 					return 1; \
 			} \
@@ -350,24 +350,24 @@ else {
 					v1 = p1 - p2;
 				v2 = p1 - r1;
 				alpha = dot(v1, N2) / dot(v2, N2); \
-					SCALAR(v1, alpha, v2) \
+					v1 = alpha * v2;
 					source = p1 - v1;
 				v1 = p1 - p2;
 				v2 = p1 - q1;
 				alpha = dot(v1, N2) / dot(v2, N2); \
-					SCALAR(v1, alpha, v2) \
+					v1 = alpha * v2;
 					target = p1 - v1;
   return 1; \
       } else { \
 				v1 = p2 - p1;
   v2 = p2 - q2;
   alpha = dot(v1, N1) / dot(v2, N1); \
-	  SCALAR(v1, alpha, v2) \
+	  v1 = alpha * v2;
 	  source = p2 - v1;
   v1 = p1 - p2;
   v2 = p1 - q1;
   alpha = dot(v1, N2) / dot(v2, N2); \
-	  SCALAR(v1, alpha, v2) \
+	  v1 = alpha * v2;
 	  target = p1 - v1;
   return 1; \
       }}}} 
