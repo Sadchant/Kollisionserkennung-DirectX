@@ -658,7 +658,7 @@ StructuredBuffer<float3> vertexBuffer : register(t0);
 StructuredBuffer<int3> triangleBuffer : register(t1);
 
 RWStructuredBuffer<TrianglePair> trianglePairs : register(u0);
-RWStructuredBuffer<float3> intersectCenters : register(u1);
+AppendStructuredBuffer<float3> intersectCenters : register(u1);
 RWStructuredBuffer<uint> intersectingObjects : register(u1);
 
 [numthreads(LINEAR_XTHREADS/64, LINEAR_YTHREADS, LINEAR_ZTHREADS)]

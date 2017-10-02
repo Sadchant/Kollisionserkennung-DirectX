@@ -1,3 +1,7 @@
+#include "CoplanarTriangleIntersection.hlsl"
+
+// Quelle: https://www.geometrictools.com/GTEngine/Samples/Geometrics/AllPairsTriangles/Shaders/TriangleIntersection.hlsl
+
 // David Eberly, Geometric Tools, Redmond WA 98052
 // Copyright (c) 1998-2017
 // Distributed under the Boost Software License, Version 1.0.
@@ -111,6 +115,9 @@ bool Intersects(float3 U[3], float3 V[3], out float3 segment[2])
     }
     else
     {
+        segment[0] = (0, 0, 0);
+        segment[1] = (0, 0, 0);
+        return IntersectCoplanar(U, V);
         // Triangle V does not transversely intersect triangle U, although it
         // is possible a vertex or edge of V is just touching U.  In this case,
         // we do not call this an intersection.
