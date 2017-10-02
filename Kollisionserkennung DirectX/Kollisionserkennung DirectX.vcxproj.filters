@@ -164,15 +164,16 @@
     <None Include="TriangleIntersection.hlsl">
       <Filter>Source Files</Filter>
     </None>
+    <None Include="CoplanarTriangleIntersection.hlsl">
+      <Filter>Source Files</Filter>
+    </None>
+    <None Include="TriangleIntersections_HLSL.hlsl">
+      <Filter>Source Files</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Kollisionserkennung DirectX.rc">
       <Filter>Resource Files</Filter>
     </ResourceCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <FxCompile Include="TriangleIntersections_HLSL.hlsl">
-      <Filter>Source Files</Filter>
-    </FxCompile>
   </ItemGroup>
 </Project>

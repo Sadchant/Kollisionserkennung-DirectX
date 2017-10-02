@@ -115,8 +115,8 @@ bool Intersects(float3 U[3], float3 V[3], out float3 segment[2])
     }
     else
     {
-        segment[0] = (0, 0, 0);
-        segment[1] = (0, 0, 0);
+        segment[0] = float3(0, 0, 0);
+        segment[1] = float3(0, 0, 0);
         return IntersectCoplanar(U, V);
         // Triangle V does not transversely intersect triangle U, although it
         // is possible a vertex or edge of V is just touching U.  In this case,
@@ -125,11 +125,19 @@ bool Intersects(float3 U[3], float3 V[3], out float3 segment[2])
     }
 }
 
-bool TrianglesIntersect(float3 U[3], float3 V[3])
+bool TrianglesIntersect(float3 U[3], float3 V[3], out float3 intersectionPoint)
 {
     float3 S0[2], S1[2];
+    intersectionPoint = float3(0, 0, 0);
     if (Intersects(V, U, S0) && Intersects(U, V, S1))
     {
+        // wenn Intersects = true ist, aber alle Segment-Punkte (0,0,0), dann sind die Dreiecke coplanar und der Mittelpunkt zwischen den Dreiecken
+        // wird als intersectionPoint zurückgegeben
+        if (S0[0] == float3(0, 0, 0) && S0[1] == float3(0, 0, 0) && S1[0] == float3(0, 0, 0) && S1[1] == float3(0, 0, 0))
+        {
+            intersectionPoint = (V[0] + V[1] + V[2] + U[0] + U[1] + U[2]) / 6;
+            return true;
+        }
         // Theoretically, the segments lie on the same line.  A direction D
         // of the line is the Cross(NormalOf(U),NormalOf(V)).  We choose the
         // average A of the segment endpoints as the line origin.
@@ -150,6 +158,7 @@ bool TrianglesIntersect(float3 U[3], float3 V[3])
         float i0max = max(t00, t01);
         float i1min = min(t10, t11);
         float i1max = max(t10, t11);
+        intersectionPoint = A + (0.5 * (i0max + i1min)) * D; // berechne den Mittelpunkt des Schnittsegments
         return (i0max > i1min && i0min < i1max);
     }
     return false;
