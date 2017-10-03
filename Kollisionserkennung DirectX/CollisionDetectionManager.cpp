@@ -86,7 +86,8 @@ CollisionDetectionManager::CollisionDetectionManager()
 	m_CellTrianglePairs_UAV = 0;
 	m_SortIndices_UAV = 0;
 	m_CellTrianglePairsBackBuffer_UAV = 0;
-	m_TrianglePairs_UAV = 0;
+	m_TrianglePairsAppend_UAV = 0;
+	m_TrianglePairsConsume_UAV = 0;
 	m_IntersectingObjects_UAV = 0;
 	m_IntersectCenters_UAV = 0;
 
@@ -292,7 +293,8 @@ void CollisionDetectionManager::CreateSceneBuffersAndViews()
 	m_CellTrianglePairs_UAV = CreateBufferUnorderedAccessView(m_CellTrianglePairs_Buffer, m_CellTrianglePairsCount, D3D11_BUFFER_UAV_FLAG_COUNTER);
 	m_SortIndices_UAV = CreateBufferUnorderedAccessView(m_SortIndices_Buffer, m_SortIndicesCount);
 	m_CellTrianglePairsBackBuffer_UAV = CreateBufferUnorderedAccessView(m_CellTrianglePairsBackBuffer_Buffer, m_CellTrianglePairsCount);
-	m_TrianglePairs_UAV = CreateBufferUnorderedAccessView(m_TrianglePairs_Buffer, m_TrianglePairsCount, D3D11_BUFFER_UAV_FLAG_APPEND);
+	m_TrianglePairsAppend_UAV = CreateBufferUnorderedAccessView(m_TrianglePairs_Buffer, m_TrianglePairsCount, D3D11_BUFFER_UAV_FLAG_APPEND);
+	m_TrianglePairsConsume_UAV = CreateBufferUnorderedAccessView(m_TrianglePairs_Buffer, m_TrianglePairsCount, D3D11_BUFFER_UAV_FLAG_APPEND);
 	m_IntersectingObjects_UAV = CreateBufferUnorderedAccessView(m_IntersectingObjects_Buffer, m_ObjectCount);
 	m_IntersectCenters_UAV = CreateBufferUnorderedAccessView(m_IntersectCenters_Buffer, m_TrianglePairsCount, D3D11_BUFFER_UAV_FLAG_APPEND);
 
@@ -348,7 +350,8 @@ void CollisionDetectionManager::ReleaseBuffersAndViews()
 	SAFERELEASE(m_CellTrianglePairs_UAV);
 	SAFERELEASE(m_SortIndices_UAV);
 	SAFERELEASE(m_CellTrianglePairsBackBuffer_UAV);
-	SAFERELEASE(m_TrianglePairs_UAV);
+	SAFERELEASE(m_TrianglePairsAppend_UAV);
+	SAFERELEASE(m_TrianglePairsConsume_UAV);
 	SAFERELEASE(m_IntersectingObjects_UAV);
 	SAFERELEASE(m_IntersectCenters_UAV);
 
@@ -419,7 +422,7 @@ ID3D11ComputeShader* CollisionDetectionManager::CreateComputeShader(WCHAR* csFil
 	// string then it means it could not find the shader file in which case we pop up a dialog box saying so.
 
 	// Compile the compute shader code, D3D_COMPILE_STANDARD_FILE_INCLUDE bewirkt, dass man "#include" in hlsl benutzen kann
-	result = D3DCompileFromFile(csFilename, NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", "cs_5_0", D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION | D3DCOMPILE_WARNINGS_ARE_ERRORS,
+	result = D3DCompileFromFile(csFilename, NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", "cs_5_0", D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION /*| D3DCOMPILE_WARNINGS_ARE_ERRORS*/,
 		0, &computeShaderBuffer, &errorMessage);
 	if (FAILED(result))
 	{
@@ -960,7 +963,7 @@ void CollisionDetectionManager::_9_FindTrianglePairs(bool backBufferIsInput)
 		deviceContext->CSSetUnorderedAccessViews(0, 1, &m_CellTrianglePairs_UAV, 0);
 
 	deviceContext->CSSetUnorderedAccessViews(1, 1, &m_BoundingBoxes_UAV, 0);
-	deviceContext->CSSetUnorderedAccessViews(2, 1, &m_TrianglePairs_UAV, 0);
+	deviceContext->CSSetUnorderedAccessViews(2, 1, &m_TrianglePairsAppend_UAV, 0);
 
 	int groupCount = (int)ceil(m_TrianglePairsCount / 1024.0);
 	deviceContext->Dispatch(groupCount, 1, 1);
@@ -979,11 +982,11 @@ void CollisionDetectionManager::_10_TriangleIntersections()
 	deviceContext->CSSetShaderResources(0, 1, &m_Vertices_SRV);
 	deviceContext->CSSetShaderResources(1, 1, &m_Triangles_SRV);
 
-	deviceContext->CSSetUnorderedAccessViews(0, 1, &m_TrianglePairs_UAV, 0);
+	deviceContext->CSSetUnorderedAccessViews(5, 1, &m_TrianglePairsConsume_UAV, 0);
 	deviceContext->CSSetUnorderedAccessViews(1, 1, &m_IntersectingObjects_UAV, 0);
 	deviceContext->CSSetUnorderedAccessViews(2, 1, &m_IntersectCenters_UAV, 0);
 
-	int groupCount = (int)ceil((float)m_TrianglePairsCount / _10_TRIANGLEINTERSECTIONS_XTHREADS);
+	int groupCount = (int)ceil((float)m_TrianglePairsCount / LINEAR_XTHREADS);
 	deviceContext->Dispatch(groupCount, 1, 1);
 
 
@@ -1022,7 +1025,7 @@ void CollisionDetectionManager::Frame()
 	_8_SortCellTrianglePairs_GetResult();
 
 	_9_FindTrianglePairs(backBufferIsInput);
-	//_9_FindTrianglePairs_GetResult();
+	_9_FindTrianglePairs_GetResult();
 
 	_10_TriangleIntersections();
 	_10_TriangleIntersections_GetResult();

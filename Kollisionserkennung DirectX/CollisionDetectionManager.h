@@ -234,7 +234,8 @@ private:
 	ID3D11UnorderedAccessView* m_CellTrianglePairs_UAV;
 	ID3D11UnorderedAccessView* m_SortIndices_UAV;
 	ID3D11UnorderedAccessView* m_CellTrianglePairsBackBuffer_UAV;
-	ID3D11UnorderedAccessView* m_TrianglePairs_UAV;
+	ID3D11UnorderedAccessView* m_TrianglePairsAppend_UAV;
+	ID3D11UnorderedAccessView* m_TrianglePairsConsume_UAV;
 	ID3D11UnorderedAccessView* m_IntersectingObjects_UAV;
 	ID3D11UnorderedAccessView* m_IntersectCenters_UAV;
 };

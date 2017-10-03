@@ -164,10 +164,10 @@
     <None Include="TriangleIntersection.hlsl">
       <Filter>Source Files</Filter>
     </None>
-    <None Include="CoplanarTriangleIntersection.hlsl">
+    <None Include="TriangleIntersections_HLSL.hlsl">
       <Filter>Source Files</Filter>
     </None>
-    <None Include="TriangleIntersections_HLSL.hlsl">
+    <None Include="CoplanarTriangleIntersection.hlsl">
       <Filter>Source Files</Filter>
     </None>
   </ItemGroup>

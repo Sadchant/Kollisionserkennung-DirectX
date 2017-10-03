@@ -3,18 +3,32 @@ bool SameSide(float3 p1, float3 p2, float3 a, float3 b)
 {
     float3 cp1 = cross(b - a, p1 - a);
     float3 cp2 = cross(b - a, p2 - a);
-    return (dot(cp1, cp2) >= 0);
+    float dotProduct = dot(cp1, cp2);
+    return (dotProduct >= 0);
 }
 
 bool PointInTriangle(float3 p, float3 a, float3 b, float3 c)
 {
+    float p1 = p.x;
+    float p2 = p.y;
+    float p3 = p.z;
+    float a1 = a.x;
+    float a2 = a.y;
+    float a3 = a.z;
+    float b1 = b.x;
+    float b2 = b.y;
+    float b3 = b.z;
+    float c1 = c.x;
+    float c2 = c.y;
+    float c3 = c.z;
+    //return p1 + p2 + p3 + a1 + a2 + a3 + b1 + b2 + b3 + c1 + c2 + c3 > 19;
     return (SameSide(p, a, b, c) && SameSide(p, b, a, c) && SameSide(p, c, a, b));
 }
 
 // *****
 
 
-#define OFFSET 0.0000001
+#define OFFSET 0.01f
 
 bool IntersectCoplanar(float3 triangle1[3], float3 triangle2[3])
 {
@@ -46,6 +60,7 @@ bool IntersectCoplanar(float3 triangle1[3], float3 triangle2[3])
     float2 _2DTriangle2[3];
     float3 _3D0Triangle1[3];
     float3 _3D0Triangle2[3];
+    [unroll]
     for (int i = 0; i < 3; i++)
     {
         _2DTriangle1[i] = mul(project2DMatrix, triangle1[i]);
@@ -56,9 +71,25 @@ bool IntersectCoplanar(float3 triangle1[3], float3 triangle2[3])
     }
     
     // überprüfe, ob die 2D-Dreiecke sich überschneiden
-    for (int j = 0; j < 3; j++)
-    {
-        if (PointInTriangle(_3D0Triangle1[j], _3D0Triangle2[0], _3D0Triangle2[1], _3D0Triangle2[2]))
-            return true;
-    }
+    //[unroll]
+    //for (int j = 0; j < 3; j++)
+    //{
+    //    if (PointInTriangle(_3D0Triangle1[j], _3D0Triangle2[0], _3D0Triangle2[1], _3D0Triangle2[2]))
+    //        return true;
+    //}
+    
+    float3 t1p1 = _3D0Triangle1[0];
+    float3 t1p2 = _3D0Triangle1[1];
+    float3 t1p3 = _3D0Triangle1[2];
+
+    float3 t2p1 = _3D0Triangle2[0];
+    float3 t2p2 = _3D0Triangle2[1];
+    float3 t2p3 = _3D0Triangle2[2];
+
+    if (SameSide(t1p1, t1p2, t2p1, t2p2) || SameSide(t1p1, t1p2, t2p2, t2p3) || SameSide(t1p1, t1p2, t2p1, t2p3) ||
+        SameSide(t1p2, t1p3, t2p1, t2p2) || SameSide(t1p2, t1p3, t2p2, t2p3) || SameSide(t1p2, t1p3, t2p1, t2p3) ||
+        SameSide(t1p1, t1p3, t2p1, t2p2) || SameSide(t1p1, t1p3, t2p2, t2p3) || SameSide(t1p1, t1p3, t2p1, t2p3))
+        return false;
+    else
+        return true;
 }
