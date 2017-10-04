@@ -3,8 +3,7 @@
 
 RWStructuredBuffer<CellTrianglePair> cellTrianglePairs : register(u0);
 RWStructuredBuffer<BoundingBox> boundingBoxes : register(u1);
-
-AppendStructuredBuffer<TrianglePair> trianglePairs : register(u2);
+RWStructuredBuffer<TrianglePair> trianglePairs : register(u2);
 
 bool checkBoundingBoxIntersection(uint boundingBoxID1, uint boundingBoxID2)
 {
@@ -39,7 +38,9 @@ void main(uint3 DTid : SV_DispatchThreadID)
             if (checkBoundingBoxIntersection(curCellTrianglePair.triangleID, nextCellTrianglePair.triangleID))
             {
                 TrianglePair newTrianglePair = { curCellTrianglePair.triangleID, nextCellTrianglePair.triangleID, curCellTrianglePair.objectID, nextCellTrianglePair.objectID };
-                trianglePairs.Append(newTrianglePair);
+                uint curCount = trianglePairs.IncrementCounter();
+                trianglePairs[curCount] = newTrianglePair;
+                //trianglePairs.Append(newTrianglePair);
 
             }
         }

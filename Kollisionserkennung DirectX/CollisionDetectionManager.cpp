@@ -293,10 +293,10 @@ void CollisionDetectionManager::CreateSceneBuffersAndViews()
 	m_CellTrianglePairs_UAV = CreateBufferUnorderedAccessView(m_CellTrianglePairs_Buffer, m_CellTrianglePairsCount, D3D11_BUFFER_UAV_FLAG_COUNTER);
 	m_SortIndices_UAV = CreateBufferUnorderedAccessView(m_SortIndices_Buffer, m_SortIndicesCount);
 	m_CellTrianglePairsBackBuffer_UAV = CreateBufferUnorderedAccessView(m_CellTrianglePairsBackBuffer_Buffer, m_CellTrianglePairsCount);
-	m_TrianglePairsAppend_UAV = CreateBufferUnorderedAccessView(m_TrianglePairs_Buffer, m_TrianglePairsCount, D3D11_BUFFER_UAV_FLAG_APPEND);
+	m_TrianglePairsAppend_UAV = CreateBufferUnorderedAccessView(m_TrianglePairs_Buffer, m_TrianglePairsCount, D3D11_BUFFER_UAV_FLAG_COUNTER);
 	m_TrianglePairsConsume_UAV = CreateBufferUnorderedAccessView(m_TrianglePairs_Buffer, m_TrianglePairsCount, D3D11_BUFFER_UAV_FLAG_APPEND);
 	m_IntersectingObjects_UAV = CreateBufferUnorderedAccessView(m_IntersectingObjects_Buffer, m_ObjectCount);
-	m_IntersectCenters_UAV = CreateBufferUnorderedAccessView(m_IntersectCenters_Buffer, m_TrianglePairsCount, D3D11_BUFFER_UAV_FLAG_APPEND);
+	m_IntersectCenters_UAV = CreateBufferUnorderedAccessView(m_IntersectCenters_Buffer, m_TrianglePairsCount, D3D11_BUFFER_UAV_FLAG_COUNTER);
 
 }
 
@@ -982,11 +982,12 @@ void CollisionDetectionManager::_10_TriangleIntersections()
 	deviceContext->CSSetShaderResources(0, 1, &m_Vertices_SRV);
 	deviceContext->CSSetShaderResources(1, 1, &m_Triangles_SRV);
 
-	deviceContext->CSSetUnorderedAccessViews(5, 1, &m_TrianglePairsConsume_UAV, 0);
+	//deviceContext->CSSetUnorderedAccessViews(0, 1, &m_CellTrianglePairs_UAV, 0);
+	deviceContext->CSSetUnorderedAccessViews(5, 1, &m_TrianglePairsAppend_UAV, 0);
 	deviceContext->CSSetUnorderedAccessViews(1, 1, &m_IntersectingObjects_UAV, 0);
 	deviceContext->CSSetUnorderedAccessViews(2, 1, &m_IntersectCenters_UAV, 0);
 
-	int groupCount = (int)ceil((float)m_TrianglePairsCount / LINEAR_XTHREADS);
+	int groupCount = (int)ceil(m_TrianglePairsCount / 1024.0);
 	deviceContext->Dispatch(groupCount, 1, 1);
 
 
@@ -1022,10 +1023,10 @@ void CollisionDetectionManager::Frame()
 	//_7_CellTrianglePairs_GetResult();
 
 	bool backBufferIsInput = _8_SortCellTrianglePairs();
-	_8_SortCellTrianglePairs_GetResult();
+	//_8_SortCellTrianglePairs_GetResult();
 
 	_9_FindTrianglePairs(backBufferIsInput);
-	_9_FindTrianglePairs_GetResult();
+	//_9_FindTrianglePairs_GetResult();
 
 	_10_TriangleIntersections();
 	_10_TriangleIntersections_GetResult();

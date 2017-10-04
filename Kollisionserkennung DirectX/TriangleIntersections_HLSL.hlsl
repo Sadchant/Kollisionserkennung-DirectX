@@ -117,7 +117,8 @@ bool Intersects(float3 U[3], float3 V[3], out float3 segment[2])
     {
         segment[0] = float3(0, 0, 0);
         segment[1] = float3(0, 0, 0);
-        return IntersectCoplanar(U, V);
+        bool result = IntersectCoplanar(U, V);
+        return result;
         // Triangle V does not transversely intersect triangle U, although it
         // is possible a vertex or edge of V is just touching U.  In this case,
         // we do not call this an intersection.

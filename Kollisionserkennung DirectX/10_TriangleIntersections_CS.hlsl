@@ -5,22 +5,30 @@
 StructuredBuffer<float3> vertexBuffer : register(t0);
 StructuredBuffer<int3> triangleBuffer : register(t1);
 
-ConsumeStructuredBuffer<TrianglePair> trianglePairs : register(u5);
+//RWStructuredBuffer<CellTrianglePair> cellTrianglePairs : register(u0);
+RWStructuredBuffer<TrianglePair> trianglePairs : register(u5);
 RWStructuredBuffer<uint> intersectingObjects : register(u1);
-AppendStructuredBuffer<float3> intersectCenters : register(u2);
+RWStructuredBuffer<float3> intersectCenters : register(u2);
 
 [numthreads(LINEAR_XTHREADS, LINEAR_YTHREADS, LINEAR_ZTHREADS)]
 void main(uint3 DTid : SV_DispatchThreadID)
 {
 	uint id = DTid.x;
-	uint trianglePairsLength, stride, sortIndicesLength;
-	trianglePairs.GetDimensions(trianglePairsLength, stride);
+    uint trianglePairsLength, stride, sortIndicesLength;
+    trianglePairs.GetDimensions(trianglePairsLength, stride);
 
-	if (id >= trianglePairsLength)
-		return;
+    if (id >= trianglePairsLength)
+        return;
 
-    TrianglePair curTrianglePair1 = trianglePairs.Consume();
-    TrianglePair curTrianglePair = { 3, 9, 0, 1 };
+    //CellTrianglePair curCellTrianglePair = cellTrianglePairs[id];
+    TrianglePair curTrianglePair = trianglePairs[id];
+
+
+    if ((curTrianglePair.triangleID1 == 0) && (curTrianglePair.triangleID2 == 0))
+        return;
+    //TrianglePair curTrianglePair = { 3, 9, 0, 1 };
+    //uint curCount = intersectCenters.IncrementCounter();
+    //intersectCenters[curCount] = float3(curTrianglePair.triangleID1, curTrianglePair.triangleID2, id /*curTrianglePair.triangleID1*/);
 
     int3 triangle1 = triangleBuffer[curTrianglePair.triangleID1];
     int3 triangle2 = triangleBuffer[curTrianglePair.triangleID2];
@@ -32,10 +40,11 @@ void main(uint3 DTid : SV_DispatchThreadID)
 
     if (TrianglesIntersect(triangleArray1, triangleArray2, intersectionPoint))
     {
-        intersectCenters.Append(intersectionPoint);
+        //intersectCenters.Append(intersectionPoint);
+        uint curCount = intersectCenters.IncrementCounter();
+        intersectCenters[curCount] = float3(intersectionPoint);
         intersectingObjects[curTrianglePair.objectID1] = 1;
         intersectingObjects[curTrianglePair.objectID2] = 1;
     }
 
-    //intersectCenters.Append(float3(curTrianglePair.objectID2, 2, 3));
 }

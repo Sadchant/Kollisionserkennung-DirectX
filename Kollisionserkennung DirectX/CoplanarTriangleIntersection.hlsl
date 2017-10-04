@@ -78,18 +78,26 @@ bool IntersectCoplanar(float3 triangle1[3], float3 triangle2[3])
     //        return true;
     //}
     
-    float3 t1p1 = _3D0Triangle1[0];
-    float3 t1p2 = _3D0Triangle1[1];
-    float3 t1p3 = _3D0Triangle1[2];
+    //float3 t1p1 = _3D0Triangle1[0];
+    //float3 t1p2 = _3D0Triangle1[1];
+    //float3 t1p3 = _3D0Triangle1[2];
 
-    float3 t2p1 = _3D0Triangle2[0];
-    float3 t2p2 = _3D0Triangle2[1];
-    float3 t2p3 = _3D0Triangle2[2];
+    //float3 t2p1 = _3D0Triangle2[0];
+    //float3 t2p2 = _3D0Triangle2[1];
+    //float3 t2p3 = _3D0Triangle2[2];
 
-    if (SameSide(t1p1, t1p2, t2p1, t2p2) || SameSide(t1p1, t1p2, t2p2, t2p3) || SameSide(t1p1, t1p2, t2p1, t2p3) ||
-        SameSide(t1p2, t1p3, t2p1, t2p2) || SameSide(t1p2, t1p3, t2p2, t2p3) || SameSide(t1p2, t1p3, t2p1, t2p3) ||
-        SameSide(t1p1, t1p3, t2p1, t2p2) || SameSide(t1p1, t1p3, t2p2, t2p3) || SameSide(t1p1, t1p3, t2p1, t2p3))
-        return false;
-    else
-        return true;
+    //if (SameSide(t1p1, t1p2, t2p1, t2p2) && SameSide(t1p1, t1p2, t2p2, t2p3) && SameSide(t1p1, t1p2, t2p1, t2p3) &&
+    //    SameSide(t1p2, t1p3, t2p1, t2p2) && SameSide(t1p2, t1p3, t2p2, t2p3) && SameSide(t1p2, t1p3, t2p1, t2p3) &&
+    //    SameSide(t1p1, t1p3, t2p1, t2p2) && SameSide(t1p1, t1p3, t2p2, t2p3) && SameSide(t1p1, t1p3, t2p1, t2p3))
+    //    return false;
+    //else
+    //    return true;
+
+    for (int j = 0; j < 3; j++)
+    {
+        float3 t1p1 = _3D0Triangle1[j], t1p2 = _3D0Triangle1[(j + 1) % 3], thirdPoint = _3D0Triangle1[(j + 2) % 3];
+        if (!SameSide(thirdPoint, _3D0Triangle2[0], t1p1, t1p2) && !SameSide(thirdPoint, _3D0Triangle2[1], t1p1, t1p2) && !SameSide(thirdPoint, _3D0Triangle2[2], t1p1, t1p2))
+            return false;
+    }
+    return true;
 }
