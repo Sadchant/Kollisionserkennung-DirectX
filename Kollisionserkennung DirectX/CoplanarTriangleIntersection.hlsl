@@ -35,11 +35,11 @@ bool IntersectCoplanar(float3 triangle1[3], float3 triangle2[3])
     // aus zwei Kanten von triangle1 die Normale normal1 berechnen
     float3 edge1 = normalize(triangle1[1] - triangle1[0]);
     float3 edge2 = normalize(triangle1[2] - triangle1[0]);
-    float3 normal1 = cross(edge1, edge2);
+    float3 normal1 = normalize(cross(edge1, edge2));
     // das selbe für das zweite Dreieck
     edge1 = normalize(triangle2[1] - triangle2[0]);
     edge2 = normalize(triangle2[2] - triangle2[0]);
-    float3 normal2 = cross(edge1, edge2);
+    float3 normal2 = normalize(cross(edge1, edge2));
     // wenn das SkalarProdukt der beiden Normalen -1 oder 1 ist, sind die Normalen parallel
     float absNormalsDotProduct = abs(dot(normal1, normal2));
     if (!((absNormalsDotProduct > (1 - OFFSET)) && (absNormalsDotProduct < (1 + OFFSET)))) // offset, um keine floats auf Gleichheit zu überprüfen

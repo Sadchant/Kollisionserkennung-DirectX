@@ -204,7 +204,7 @@ void CollisionDetectionManager::CreateVertexAndTriangleArray(vector<ModelClass*>
 		curLastIndex += curModel->GetIndexCount() / 3; // Die lastIndexe beziehen sich auf Dreieck-IDS, also / 3
 		m_ObjectsLastIndices[i] = curLastIndex - 1;
 	}
-	m_CellTrianglePairsCount = m_TriangleCount * 4;
+	m_CellTrianglePairsCount = (int)ceil(m_TriangleCount * 3.5);
 	//m_CellTrianglePairsCount = 15;
 	m_SortIndicesCount = (int)pow(2, (int)ceil(log2(m_CellTrianglePairsCount))) + 1; // + 1 für eine komplette exklusive Prefix Summe
 	m_TrianglePairsCount = m_TriangleCount * 2;
@@ -353,9 +353,7 @@ void CollisionDetectionManager::ReleaseBuffersAndViews()
 	SAFERELEASE(m_TrianglePairsAppend_UAV);
 	SAFERELEASE(m_TrianglePairsConsume_UAV);
 	SAFERELEASE(m_IntersectingObjects_UAV);
-	SAFERELEASE(m_IntersectCenters_UAV);
-
-	
+	SAFERELEASE(m_IntersectCenters_UAV);	
 }
 
 void CollisionDetectionManager::Shutdown()
@@ -1028,8 +1026,8 @@ void CollisionDetectionManager::Frame()
 	_9_FindTrianglePairs(backBufferIsInput);
 	//_9_FindTrianglePairs_GetResult();
 
-	_10_TriangleIntersections();
-	_10_TriangleIntersections_GetResult();
+	//_10_TriangleIntersections();
+	//_10_TriangleIntersections_GetResult();
 }
 
 

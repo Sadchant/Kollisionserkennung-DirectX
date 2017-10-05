@@ -162,7 +162,9 @@ bool TrianglesIntersect(float3 U[3], float3 V[3], out float3 intersectionPoint)
         float i0max = max(t00, t01);
         float i1min = min(t10, t11);
         float i1max = max(t10, t11);
-        intersectionPoint = A + (0.5 * (i0max + i1min)) * D; // berechne den Mittelpunkt des Schnittsegments
+        float maxofmins = max(i0min, i1min);
+        float minofmaxs = min(i0max, i1max);
+        intersectionPoint = A + (0.5 * (maxofmins + minofmaxs)) * D; // berechne den Mittelpunkt des Schnittsegments
         return (i0max > i1min && i0min < i1max);
     }
     return false;

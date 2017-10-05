@@ -31,7 +31,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
     uint curID = id + 1;
     CellTrianglePair nextCellTrianglePair = cellTrianglePairs[curID];
     int counter = 0;
-    while ((curCellTrianglePair.cellID == nextCellTrianglePair.cellID) && (nextCellTrianglePair.cellID != 0)&& counter < 100)
+    while ((curCellTrianglePair.cellID == nextCellTrianglePair.cellID) && (nextCellTrianglePair.cellID != 0))
     {
         if (curCellTrianglePair.objectID != nextCellTrianglePair.objectID)
         {
@@ -41,7 +41,6 @@ void main(uint3 DTid : SV_DispatchThreadID)
                 uint curCount = trianglePairs.IncrementCounter();
                 trianglePairs[curCount] = newTrianglePair;
                 //trianglePairs.Append(newTrianglePair);
-
             }
         }
         curID++;
