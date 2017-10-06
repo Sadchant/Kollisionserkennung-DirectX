@@ -23,6 +23,9 @@ void main(uint3 DTid : SV_DispatchThreadID)
     //CellTrianglePair curCellTrianglePair = cellTrianglePairs[id];
     TrianglePair curTrianglePair = trianglePairs[id];
 
+	TrianglePair emptyTrianglePair = { 0, 0, 0, 0 };
+	trianglePairs[id] = emptyTrianglePair;
+
 
     if ((curTrianglePair.triangleID1 == 0) && (curTrianglePair.triangleID2 == 0))
         return;
