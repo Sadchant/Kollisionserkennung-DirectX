@@ -1057,7 +1057,7 @@ void CollisionDetectionManager::Frame()
 	//_7_CellTrianglePairs_GetResult();
 
 	bool backBufferIsInput = _8_SortCellTrianglePairs();
-	//_8_SortCellTrianglePairs_GetResult();
+	_8_SortCellTrianglePairs_GetResult();
 
 	_9_FindTrianglePairs(backBufferIsInput);
 	_9_FindTrianglePairs_GetResult();
@@ -1331,7 +1331,6 @@ void CollisionDetectionManager::_8_SortCellTrianglePairs_GetResult()
 	deviceContext->Unmap(m_Result_Buffer8_2, 0);
 	deviceContext->Unmap(m_Result_Buffer8_3, 0);
 
-	return;
 	int counter = 0;
 	int maxCellSize = 0;
 	CellTrianglePair tempCellTrianglePair;
@@ -1347,7 +1346,7 @@ void CollisionDetectionManager::_8_SortCellTrianglePairs_GetResult()
 		}
 		else
 		{
-			cout << counter << endl;
+			//cout << counter << endl;
 			if (counter > maxCellSize) 
 			{
 				maxCellSize = counter;

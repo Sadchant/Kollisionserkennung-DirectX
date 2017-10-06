@@ -40,7 +40,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
     uint curID = id + 1;
     CellTrianglePair nextCellTrianglePair = cellTrianglePairs[curID];
     int counter = 0;
-    while ((curCellTrianglePair.cellID == nextCellTrianglePair.cellID) && (nextCellTrianglePair.cellID != 0))
+    while ((curCellTrianglePair.cellID == nextCellTrianglePair.cellID) && (nextCellTrianglePair.cellID != 0) && counter < 1425)
     {
         if (curCellTrianglePair.objectID != nextCellTrianglePair.objectID)
         {
