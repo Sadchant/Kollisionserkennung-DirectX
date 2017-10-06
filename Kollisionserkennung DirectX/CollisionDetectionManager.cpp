@@ -40,6 +40,7 @@ CollisionDetectionManager::CollisionDetectionManager()
 	m_CellTrianglePairs_Buffer = 0;
 	m_SortIndices_Buffer = 0;
 	m_CellTrianglePairsBackBuffer_Buffer = 0;
+	m_CellTrianglePairsWorkPositions_Buffer = 0;
 	m_TrianglePairs_Buffer = 0;
 	m_IntersectingObjects_Buffer = 0;
 	m_IntersectCenters_Buffer = 0;
@@ -51,6 +52,7 @@ CollisionDetectionManager::CollisionDetectionManager()
 	m_Loops_CBuffer = 0;
 	m_RadixSort_ExclusivePrefixSumData_CBuffer = 0;
 	m_RadixSort_ExclusivePrefixSumData2_CBuffer = 0;
+	m_Bool_UseWorkPositions_CBuffer = 0;
 
 
 	m_Result_Buffer1 = 0;
@@ -86,6 +88,7 @@ CollisionDetectionManager::CollisionDetectionManager()
 	m_CellTrianglePairs_UAV = 0;
 	m_SortIndices_UAV = 0;
 	m_CellTrianglePairsBackBuffer_UAV = 0;
+	m_CellTrianglePairsWorkPositions_UAV = 0;
 	m_TrianglePairs_UAV = 0;
 	m_IntersectingObjects_UAV = 0;
 	m_IntersectCenters_UAV = 0;
@@ -107,6 +110,7 @@ void CollisionDetectionManager::Initialize(ID3D11Device* device, ID3D11DeviceCon
 	m_Loops_CBuffer = CreateConstantBuffer(sizeof(SingleUINT), D3D11_USAGE_DEFAULT, NULL);
 	m_RadixSort_ExclusivePrefixSumData_CBuffer = CreateConstantBuffer(sizeof(RadixSort_ExclusivePrefixSumData), D3D11_USAGE_DEFAULT, NULL);
 	m_RadixSort_ExclusivePrefixSumData2_CBuffer = CreateConstantBuffer(sizeof(RadixSort_ExclusivePrefixSumData2), D3D11_USAGE_DEFAULT, NULL);
+	m_Bool_UseWorkPositions_CBuffer = CreateConstantBuffer(sizeof(SingleUINT), D3D11_USAGE_DEFAULT, NULL);
 
 	
 	m_hwnd = hwnd;
@@ -204,6 +208,7 @@ void CollisionDetectionManager::CreateVertexAndTriangleArray(vector<ModelClass*>
 		m_ObjectsLastIndices[i] = curLastIndex - 1;
 	}
 	m_CellTrianglePairsCount = (int)ceil(m_TriangleCount * 3.5);
+	m_CellTrianglePairsWorkCount = m_CellTrianglePairsCount / 2;
 	//m_CellTrianglePairsCount = 15;
 	m_SortIndicesCount = (int)pow(2, (int)ceil(log2(m_CellTrianglePairsCount))) + 1; // + 1 für eine komplette exklusive Prefix Summe
 	m_TrianglePairsCount = m_TriangleCount * 30;
@@ -257,6 +262,7 @@ void CollisionDetectionManager::CreateSceneBuffersAndViews()
 	m_CellTrianglePairs_Buffer = CreateStructuredBuffer(m_CellTrianglePairsCount, sizeof(CellTrianglePair), D3D11_BIND_UNORDERED_ACCESS, D3D11_USAGE_DEFAULT, 0, NULL);
 	m_SortIndices_Buffer = CreateStructuredBuffer(m_SortIndicesCount, sizeof(SortIndices), D3D11_BIND_UNORDERED_ACCESS, D3D11_USAGE_DEFAULT, 0, NULL);
 	m_CellTrianglePairsBackBuffer_Buffer = CreateStructuredBuffer(m_CellTrianglePairsCount, sizeof(CellTrianglePair), D3D11_BIND_UNORDERED_ACCESS, D3D11_USAGE_DEFAULT, 0, NULL);
+	m_CellTrianglePairsWorkPositions_Buffer = CreateStructuredBuffer(m_CellTrianglePairsWorkCount, sizeof(UINT), D3D11_BIND_UNORDERED_ACCESS, D3D11_USAGE_DEFAULT, 0, NULL);
 
 	TrianglePair* trianglePairs_0s = new TrianglePair[m_TrianglePairsCount]{ {0, 0, 0, 0 } }; // Dient nur dazu, den counterTrees-Buffer mit 0en zu füllen
 	D3D11_SUBRESOURCE_DATA trianglePairs_SubresourceData = D3D11_SUBRESOURCE_DATA{ trianglePairs_0s, 0, 0 };
@@ -296,6 +302,7 @@ void CollisionDetectionManager::CreateSceneBuffersAndViews()
 	m_CellTrianglePairs_UAV = CreateBufferUnorderedAccessView(m_CellTrianglePairs_Buffer, m_CellTrianglePairsCount, D3D11_BUFFER_UAV_FLAG_COUNTER);
 	m_SortIndices_UAV = CreateBufferUnorderedAccessView(m_SortIndices_Buffer, m_SortIndicesCount);
 	m_CellTrianglePairsBackBuffer_UAV = CreateBufferUnorderedAccessView(m_CellTrianglePairsBackBuffer_Buffer, m_CellTrianglePairsCount);
+	m_CellTrianglePairsWorkPositions_UAV = CreateBufferUnorderedAccessView(m_CellTrianglePairsWorkPositions_Buffer, m_CellTrianglePairsWorkCount);
 	m_TrianglePairs_UAV = CreateBufferUnorderedAccessView(m_TrianglePairs_Buffer, m_TrianglePairsCount, D3D11_BUFFER_UAV_FLAG_COUNTER);
 	m_IntersectingObjects_UAV = CreateBufferUnorderedAccessView(m_IntersectingObjects_Buffer, m_ObjectCount);
 	m_IntersectCenters_UAV = CreateBufferUnorderedAccessView(m_IntersectCenters_Buffer, m_TrianglePairsCount, D3D11_BUFFER_UAV_FLAG_COUNTER);
@@ -322,6 +329,7 @@ void CollisionDetectionManager::ReleaseBuffersAndViews()
 	SAFERELEASE(m_CellTrianglePairs_Buffer);
 	SAFERELEASE(m_SortIndices_Buffer);
 	SAFERELEASE(m_CellTrianglePairsBackBuffer_Buffer);
+	SAFERELEASE(m_CellTrianglePairsWorkPositions_Buffer);
 	SAFERELEASE(m_TrianglePairs_Buffer);
 	SAFERELEASE(m_IntersectingObjects_Buffer);
 	SAFERELEASE(m_IntersectCenters_Buffer);
@@ -356,6 +364,7 @@ void CollisionDetectionManager::ReleaseBuffersAndViews()
 	SAFERELEASE(m_CellTrianglePairs_UAV);
 	SAFERELEASE(m_SortIndices_UAV);
 	SAFERELEASE(m_CellTrianglePairsBackBuffer_UAV);
+	SAFERELEASE(m_CellTrianglePairsWorkPositions_UAV);
 	SAFERELEASE(m_TrianglePairs_UAV);
 	SAFERELEASE(m_IntersectingObjects_UAV);
 	SAFERELEASE(m_IntersectCenters_UAV);	
@@ -389,6 +398,7 @@ void CollisionDetectionManager::Shutdown()
 	SAFERELEASE(m_Loops_CBuffer);
 	SAFERELEASE(m_RadixSort_ExclusivePrefixSumData_CBuffer);
 	SAFERELEASE(m_RadixSort_ExclusivePrefixSumData2_CBuffer);
+	SAFERELEASE(m_Bool_UseWorkPositions_CBuffer);
 
 	SAFEDELETEARRAY(m_CellTrianglePairs_Zero);
 	SAFEDELETEARRAY(m_IntersectCenters_Zero);
@@ -973,6 +983,16 @@ void CollisionDetectionManager::_9_FindTrianglePairs(bool backBufferIsInput)
 	deviceContext->CSSetUnorderedAccessViews(1, 1, &m_BoundingBoxes_UAV, 0);
 	deviceContext->CSSetUnorderedAccessViews(2, 1, &m_TrianglePairs_UAV, &zero); // setze den Buffer-Counter auf 0 zurück
 
+	int maxLCellTriangleBlockSize = 1500;
+	int curWorkPosition = 0;
+	bool firstStep = true;
+
+	//while(curWorkPosition < maxLCellTriangleBlockSize)
+	//// Constant Buffer updaten
+	//SingleUINT s_UseWorkPositions = { (UINT)curStartLevel };
+	//deviceContext->UpdateSubresource(m_StartLevel_CBuffer, 0, NULL, &s_StartLevel, 0, 0);
+	//deviceContext->CSSetConstantBuffers(1, 1, &m_StartLevel_CBuffer);
+
 	int groupCount = (int)ceil(m_TrianglePairsCount / 1024.0);
 	deviceContext->Dispatch(groupCount, 1, 1);
 
@@ -1042,8 +1062,8 @@ void CollisionDetectionManager::Frame()
 	_9_FindTrianglePairs(backBufferIsInput);
 	_9_FindTrianglePairs_GetResult();
 
-	_10_TriangleIntersections();
-	_10_TriangleIntersections_GetFinalResult();
+	/*_10_TriangleIntersections();
+	_10_TriangleIntersections_GetFinalResult();*/
 }
 
 

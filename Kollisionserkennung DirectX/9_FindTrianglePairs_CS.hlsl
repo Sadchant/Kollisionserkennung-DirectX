@@ -5,6 +5,15 @@ RWStructuredBuffer<CellTrianglePair> cellTrianglePairs : register(u0);
 RWStructuredBuffer<BoundingBox> boundingBoxes : register(u1);
 RWStructuredBuffer<TrianglePair> trianglePairs : register(u2);
 
+RWStructuredBuffer<uint> cellTrianglePairsWorkPositions : register(u3);
+
+
+cbuffer Bool_UseWorkPositions : register(b1)
+{
+    // wird direkt aus cellTrianglePairs gelesen oder die ID, wo der ALgorithmus startet aus CellTrianglePairsWorkPositions benutzt?
+    uint bool_UseWorkPositions; 
+};
+
 bool checkBoundingBoxIntersection(uint boundingBoxID1, uint boundingBoxID2)
 {
     BoundingBox boundingBox1 = boundingBoxes[boundingBoxID1];

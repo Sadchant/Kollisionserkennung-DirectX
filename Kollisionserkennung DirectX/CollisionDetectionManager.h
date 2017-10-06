@@ -141,6 +141,7 @@ private:
 	int m_TreeSize;
 	int m_CounterTreesSize;
 	int m_CellTrianglePairsCount;
+	int m_CellTrianglePairsWorkCount;
 	int m_SortIndicesCount;
 	int m_TrianglePairsCount;
 
@@ -166,6 +167,7 @@ private:
 	ID3D11Buffer* m_CellTrianglePairs_Buffer; // enthält alle für die Kollisionsberechnung relevanten Zellen-Dreicks-Paare
 	ID3D11Buffer* m_SortIndices_Buffer; // Indices für den RadixSort, wo wird pro Bit hinsortiert?
 	ID3D11Buffer* m_CellTrianglePairsBackBuffer_Buffer; // dient als BackBuffer beim Sortieren
+	ID3D11Buffer* m_CellTrianglePairsWorkPositions_Buffer; // enthält alle für die Kollisionsberechnung relevanten Zellen-Dreicks-Paare
 	ID3D11Buffer* m_TrianglePairs_Buffer; // dient als BackBuffer beim Sortieren
 	ID3D11Buffer* m_IntersectingObjects_Buffer; // dient als BackBuffer beim Sortieren
 	ID3D11Buffer* m_IntersectCenters_Buffer; // dient als BackBuffer beim Sortieren
@@ -178,6 +180,7 @@ private:
 	ID3D11Buffer* m_Loops_CBuffer;
 	ID3D11Buffer* m_RadixSort_ExclusivePrefixSumData_CBuffer;
 	ID3D11Buffer* m_RadixSort_ExclusivePrefixSumData2_CBuffer;
+	ID3D11Buffer* m_Bool_UseWorkPositions_CBuffer;
 
 	// Zero Buffer, um Buffer mit 0en zu füllen
 	CellTrianglePair* m_CellTrianglePairs_Zero;
@@ -237,6 +240,7 @@ private:
 	ID3D11UnorderedAccessView* m_CellTrianglePairs_UAV;
 	ID3D11UnorderedAccessView* m_SortIndices_UAV;
 	ID3D11UnorderedAccessView* m_CellTrianglePairsBackBuffer_UAV;
+	ID3D11UnorderedAccessView* m_CellTrianglePairsWorkPositions_UAV;
 	ID3D11UnorderedAccessView* m_TrianglePairs_UAV;
 	ID3D11UnorderedAccessView* m_IntersectingObjects_UAV;
 	ID3D11UnorderedAccessView* m_IntersectCenters_UAV;
