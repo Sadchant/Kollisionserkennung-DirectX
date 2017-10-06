@@ -22,8 +22,8 @@ CollisionDetectionManager::CollisionDetectionManager()
 	m_Results8_2 = 0;
 	m_Results8_3 = 0;
 	m_Results9 = 0;
-	m_Results10_1 = 0;
-	m_Results10_2 = 0;
+	m_Results10_1_IntersectingObjects = 0;
+	m_Results10_2_IntersectionPoints = 0;
 
 	m_curComputeShader = 0;
 
@@ -206,7 +206,6 @@ void CollisionDetectionManager::CreateVertexAndTriangleArray(vector<ModelClass*>
 	m_CellTrianglePairsCount = (int)ceil(m_TriangleCount * 3.5);
 	//m_CellTrianglePairsCount = 15;
 	m_SortIndicesCount = (int)pow(2, (int)ceil(log2(m_CellTrianglePairsCount))) + 1; // + 1 für eine komplette exklusive Prefix Summe
-	//m_TrianglePairsCount = m_TriangleCount * 2;
 	m_TrianglePairsCount = m_TriangleCount * 30;
 }
 
@@ -301,6 +300,10 @@ void CollisionDetectionManager::CreateSceneBuffersAndViews()
 	m_IntersectingObjects_UAV = CreateBufferUnorderedAccessView(m_IntersectingObjects_Buffer, m_ObjectCount);
 	m_IntersectCenters_UAV = CreateBufferUnorderedAccessView(m_IntersectCenters_Buffer, m_TrianglePairsCount, D3D11_BUFFER_UAV_FLAG_COUNTER);
 
+	m_CellTrianglePairs_Zero = new CellTrianglePair[m_CellTrianglePairsCount];
+	ZeroMemory(m_CellTrianglePairs_Zero, m_CellTrianglePairsCount * sizeof(CellTrianglePair));
+	m_IntersectCenters_Zero = new Vertex[m_TrianglePairsCount];
+	ZeroMemory(m_IntersectCenters_Zero, m_TrianglePairsCount * sizeof(Vertex));
 }
 
 // gib alle Buffer, Shader Resource Views und Unordered Access Views frei
@@ -376,8 +379,8 @@ void CollisionDetectionManager::Shutdown()
 	SAFEDELETEARRAY(m_Results8_2);
 	SAFEDELETEARRAY(m_Results8_3);
 	SAFEDELETEARRAY(m_Results9);
-	SAFEDELETEARRAY(m_Results10_1);
-	SAFEDELETEARRAY(m_Results10_2);
+	SAFEDELETEARRAY(m_Results10_1_IntersectingObjects);
+	SAFEDELETEARRAY(m_Results10_2_IntersectionPoints);
 
 	SAFERELEASE(m_ReduceData_CBuffer);
 	SAFERELEASE(m_ObjectCount_CBuffer);
@@ -386,6 +389,9 @@ void CollisionDetectionManager::Shutdown()
 	SAFERELEASE(m_Loops_CBuffer);
 	SAFERELEASE(m_RadixSort_ExclusivePrefixSumData_CBuffer);
 	SAFERELEASE(m_RadixSort_ExclusivePrefixSumData2_CBuffer);
+
+	SAFEDELETEARRAY(m_CellTrianglePairs_Zero);
+	SAFEDELETEARRAY(m_IntersectCenters_Zero);
 
 	ReleaseBuffersAndViews();
 
@@ -974,6 +980,10 @@ void CollisionDetectionManager::_9_FindTrianglePairs(bool backBufferIsInput)
 	deviceContext->CSSetUnorderedAccessViews(1, 1, &m_NULL_UAV, 0);
 	deviceContext->CSSetUnorderedAccessViews(2, 1, &m_NULL_UAV, 0);
 
+
+	deviceContext->UpdateSubresource(m_CellTrianglePairs_Buffer, 0, NULL, m_CellTrianglePairs_Zero, m_CellTrianglePairsCount * sizeof(CellTrianglePair), 0);
+	deviceContext->UpdateSubresource(m_CellTrianglePairsBackBuffer_Buffer, 0, NULL, m_CellTrianglePairs_Zero, m_CellTrianglePairsCount * sizeof(CellTrianglePair), 0);
+	//Arguments: The buffer, The subresource (0), A destination box(NULL), The data to write to the buffer, the size of the buffer, the depth of the buffer
 }
 
 void CollisionDetectionManager::_10_TriangleIntersections()
@@ -1030,10 +1040,10 @@ void CollisionDetectionManager::Frame()
 	//_8_SortCellTrianglePairs_GetResult();
 
 	_9_FindTrianglePairs(backBufferIsInput);
-	//_9_FindTrianglePairs_GetResult();
+	_9_FindTrianglePairs_GetResult();
 
 	_10_TriangleIntersections();
-	_10_TriangleIntersections_GetResult();
+	_10_TriangleIntersections_GetFinalResult();
 }
 
 
@@ -1368,12 +1378,12 @@ void CollisionDetectionManager::_9_FindTrianglePairs_GetResult()
 	cout << "tatsächlicher Count  : " << i << endl;
 }
 
-void CollisionDetectionManager::_10_TriangleIntersections_GetResult()
+void CollisionDetectionManager::_10_TriangleIntersections_GetFinalResult()
 {
-	SAFEDELETEARRAY(m_Results10_1);
-	SAFEDELETEARRAY(m_Results10_2);
-	m_Results10_1 = new UINT[m_ObjectCount];
-	m_Results10_2 = new Vertex[m_TrianglePairsCount];
+	SAFEDELETEARRAY(m_Results10_1_IntersectingObjects);
+	SAFEDELETEARRAY(m_Results10_2_IntersectionPoints);
+	m_Results10_1_IntersectingObjects = new UINT[m_ObjectCount];
+	m_Results10_2_IntersectionPoints = new Vertex[m_TrianglePairsCount];
 	D3D11_MAPPED_SUBRESOURCE MappedResource10_1 = { 0 };
 	D3D11_MAPPED_SUBRESOURCE MappedResource10_2 = { 0 };
 	deviceContext->CopyResource(m_Result_Buffer10_1, m_IntersectingObjects_Buffer);
@@ -1384,17 +1394,19 @@ void CollisionDetectionManager::_10_TriangleIntersections_GetResult()
 	_Analysis_assume_(MappedResource10_2.pData);
 	assert(MappedResource10_1.pData);
 	assert(MappedResource10_2.pData);
-	memcpy(m_Results10_1, MappedResource10_1.pData, m_ObjectCount * sizeof(UINT));
-	memcpy(m_Results10_2, MappedResource10_2.pData, m_TrianglePairsCount * sizeof(Vertex));
+	memcpy(m_Results10_1_IntersectingObjects, MappedResource10_1.pData, m_ObjectCount * sizeof(UINT));
+	memcpy(m_Results10_2_IntersectionPoints, MappedResource10_2.pData, m_TrianglePairsCount * sizeof(Vertex));
 	deviceContext->Unmap(m_Result_Buffer10_1, 0);
 	deviceContext->Unmap(m_Result_Buffer10_2, 0);
 
-	int i = 0;
+	/*int i = 0;
 	for (i = 0; i < m_TrianglePairsCount; i++)
 	{
 		if (m_Results10_2[i].x == 0 && m_Results10_2[i].y == 0 && m_Results10_2[i].z == 0)
 			break;
 	}
-	cout << "intersectionPoints : " << i << endl;
-	
+	cout << "intersectionPoints : " << i << endl;*/
+
+	// setze IntersectCentersBuffer auf 0 zurück
+	deviceContext->UpdateSubresource(m_IntersectCenters_Buffer, 0, NULL, m_IntersectCenters_Zero, m_TrianglePairsCount * sizeof(Vertex), 0);	
 }

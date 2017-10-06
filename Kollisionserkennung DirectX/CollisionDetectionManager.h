@@ -128,7 +128,7 @@ private:
 	void _7_CellTrianglePairs_GetResult();
 	void _8_SortCellTrianglePairs_GetResult();
 	void _9_FindTrianglePairs_GetResult();
-	void _10_TriangleIntersections_GetResult();
+	void _10_TriangleIntersections_GetFinalResult();
 
 	ID3D11Device* device;
 	ID3D11DeviceContext* deviceContext;
@@ -179,6 +179,10 @@ private:
 	ID3D11Buffer* m_RadixSort_ExclusivePrefixSumData_CBuffer;
 	ID3D11Buffer* m_RadixSort_ExclusivePrefixSumData2_CBuffer;
 
+	// Zero Buffer, um Buffer mit 0en zu füllen
+	CellTrianglePair* m_CellTrianglePairs_Zero;
+	Vertex* m_IntersectCenters_Zero;
+
 	// Test-ResultBuffer
 	BoundingBox* m_Results1; // wird von der GPU befüllt!
 	Vertex* m_Results2_1; // wird von der GPU befüllt!
@@ -193,8 +197,8 @@ private:
 	CellTrianglePair* m_Results8_2; // wird von der GPU befüllt!
 	CellTrianglePair* m_Results8_3; // wird von der GPU befüllt!
 	TrianglePair* m_Results9; // wird von der GPU befüllt!
-	UINT* m_Results10_1; // wird von der GPU befüllt!
-	Vertex* m_Results10_2; // wird von der GPU befüllt!
+	UINT* m_Results10_1_IntersectingObjects; // wird von der GPU befüllt!
+	Vertex* m_Results10_2_IntersectionPoints; // wird von der GPU befüllt!
 
 	// langsame (CPU-Zugriff!) ResultBuffer, in die ein Ergebnis von der GPU kopiert wird
 	ID3D11Buffer* m_Result_Buffer1;
