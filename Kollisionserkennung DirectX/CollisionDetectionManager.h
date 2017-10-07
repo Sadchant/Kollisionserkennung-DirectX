@@ -62,6 +62,11 @@ private:
 		UINT objectID1;
 		UINT objectID2;
 	};
+	struct WorkPosition
+	{
+		CellTrianglePair blockFirstCellTrianglePair;
+		UINT workPosition;
+	};
 
 	__declspec(align(16)) // Structs in einem ConstantBuffer müpssen auf 16 Byte aligned sein
 		struct ReduceData
@@ -199,7 +204,8 @@ private:
 	SortIndices* m_Results8_1; // wird von der GPU befüllt!
 	CellTrianglePair* m_Results8_2; // wird von der GPU befüllt!
 	CellTrianglePair* m_Results8_3; // wird von der GPU befüllt!
-	TrianglePair* m_Results9; // wird von der GPU befüllt!
+	TrianglePair* m_Results9_1; // wird von der GPU befüllt!
+	WorkPosition* m_Results9_2; // wird von der GPU befüllt!
 	UINT* m_Results10_1_IntersectingObjects; // wird von der GPU befüllt!
 	Vertex* m_Results10_2_IntersectionPoints; // wird von der GPU befüllt!
 
@@ -216,7 +222,8 @@ private:
 	ID3D11Buffer* m_Result_Buffer8_1;
 	ID3D11Buffer* m_Result_Buffer8_2;
 	ID3D11Buffer* m_Result_Buffer8_3;
-	ID3D11Buffer* m_Result_Buffer9;
+	ID3D11Buffer* m_Result_Buffer9_1;
+	ID3D11Buffer* m_Result_Buffer9_2;
 	ID3D11Buffer* m_Result_Buffer10_1;
 	ID3D11Buffer* m_Result_Buffer10_2;
 

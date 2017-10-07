@@ -19,7 +19,7 @@
 
 #define SUBDIVS 7
 
-#define _9_WORKSIZE 10
+#define _9_WORKSIZE 16
 
 
 #endif
