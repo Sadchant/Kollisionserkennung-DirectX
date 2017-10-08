@@ -142,9 +142,9 @@ private:
 	int m_TreeSize;
 	int m_CounterTreesSize;
 	int m_CellTrianglePairsCount;
-	int m_IntersectionCentersCount;
 	int m_SortIndicesCount;
 	int m_TrianglePairsCount;
+	int m_IntersectionCentersCount;
 	bool m_CopyTo1;
 
 	Vertex* m_Vertices; // Array: beinhaltet alle Punkte, also dreimal so viele wie es indices gibt
@@ -169,9 +169,9 @@ private:
 	ID3D11Buffer* m_CellTrianglePairs_Buffer; // enthält alle für die Kollisionsberechnung relevanten Zellen-Dreicks-Paare
 	ID3D11Buffer* m_SortIndices_Buffer; // Indices für den RadixSort, wo wird pro Bit hinsortiert?
 	ID3D11Buffer* m_CellTrianglePairsBackBuffer_Buffer; // dient als BackBuffer beim Sortieren
-	ID3D11Buffer* m_TrianglePairs_Buffer; // dient als BackBuffer beim Sortieren
-	ID3D11Buffer* m_IntersectingObjects_Buffer; // dient als BackBuffer beim Sortieren
-	ID3D11Buffer* m_IntersectCenters_Buffer; // dient als BackBuffer beim Sortieren
+	ID3D11Buffer* m_TrianglePairs_Buffer; // enthält alle BoundingBox-Ids, die sich überschneiden
+	ID3D11Buffer* m_IntersectingObjects_Buffer; // enthält für jedes Objekt einen Eintrag, ob es mit anderen kollidiert
+	ID3D11Buffer* m_IntersectCenters_Buffer; // enthält alle Mittelpunkte von Dreiecks-Kollisionen
 
 	// ConstantBuffer:
 	ID3D11Buffer* m_ReduceData_CBuffer;

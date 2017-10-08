@@ -63,5 +63,3 @@ SortIndices getSortIndicesFromInput(uint id, uint cellTrianglePairsSize, uint re
     }
     return resultSortIndices;
 }
-
-

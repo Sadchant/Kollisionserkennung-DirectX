@@ -207,7 +207,6 @@ void CollisionDetectionManager::CreateVertexAndTriangleArray(vector<ModelClass*>
 		m_ObjectsLastIndices[i] = curLastIndex - 1;
 	}
 	m_CellTrianglePairsCount = (int)ceil(m_TriangleCount * 3.5);
-	//m_CellTrianglePairsCount = 15;
 	m_SortIndicesCount = (int)pow(2, (int)ceil(log2(m_CellTrianglePairsCount))) + 1; // + 1 für eine komplette exklusive Prefix Summe
 	m_TrianglePairsCount = m_TriangleCount * 30;
 	m_IntersectionCentersCount = m_TriangleCount * 8;
@@ -261,10 +260,6 @@ void CollisionDetectionManager::CreateSceneBuffersAndViews()
 	m_CellTrianglePairs_Buffer = CreateStructuredBuffer(m_CellTrianglePairsCount, sizeof(CellTrianglePair), D3D11_BIND_UNORDERED_ACCESS, D3D11_USAGE_DEFAULT, 0, NULL);
 	m_SortIndices_Buffer = CreateStructuredBuffer(m_SortIndicesCount, sizeof(SortIndices), D3D11_BIND_UNORDERED_ACCESS, D3D11_USAGE_DEFAULT, 0, NULL);
 	m_CellTrianglePairsBackBuffer_Buffer = CreateStructuredBuffer(m_CellTrianglePairsCount, sizeof(CellTrianglePair), D3D11_BIND_UNORDERED_ACCESS, D3D11_USAGE_DEFAULT, 0, NULL);
-
-	TrianglePair* trianglePairs_0s = new TrianglePair[m_TrianglePairsCount]{ {0, 0, 0, 0 } }; // Dient nur dazu, den counterTrees-Buffer mit 0en zu füllen
-	D3D11_SUBRESOURCE_DATA trianglePairs_SubresourceData = D3D11_SUBRESOURCE_DATA{ trianglePairs_0s, 0, 0 };
-
 	m_TrianglePairs_Buffer = CreateStructuredBuffer(m_TrianglePairsCount, sizeof(TrianglePair), D3D11_BIND_UNORDERED_ACCESS, D3D11_USAGE_DEFAULT, 0, NULL);
 	m_IntersectingObjects_Buffer = CreateStructuredBuffer(m_ObjectCount, sizeof(UINT), D3D11_BIND_UNORDERED_ACCESS, D3D11_USAGE_DEFAULT, 0, NULL);
 	m_IntersectCenters_Buffer = CreateStructuredBuffer(m_IntersectionCentersCount, sizeof(Vertex), D3D11_BIND_UNORDERED_ACCESS, D3D11_USAGE_DEFAULT, 0, NULL);
@@ -815,7 +810,7 @@ void CollisionDetectionManager::_7_CellTrianglePairs()
 	deviceContext->CSSetUnorderedAccessViews(5, 1, &m_NULL_UAV, 0);
 }
 
-// ******* 7. Befülle Countertrees mit den Daten für jedes Objekt *******
+// ******* 8. Sortiere cellTrianglePairs nach Zellen-IDs *******
 bool CollisionDetectionManager::_8_SortCellTrianglePairs()
 { 
 
@@ -940,6 +935,7 @@ bool CollisionDetectionManager::_8_SortCellTrianglePairs()
 	return backBufferIsInput;
 }
 
+// ******* 9. Finde im sortierten cellTrianglePairsBuffer alle Dreieckspaare, deren Bounding Boxes sich überschneiden *******
 void CollisionDetectionManager::_9_FindTrianglePairs(bool backBufferIsInput)
 {
 	m_curComputeShader = m_ComputeShaderVector[10];
@@ -955,10 +951,6 @@ void CollisionDetectionManager::_9_FindTrianglePairs(bool backBufferIsInput)
 	deviceContext->CSSetUnorderedAccessViews(1, 1, &m_BoundingBoxes_UAV, 0);
 	deviceContext->CSSetUnorderedAccessViews(2, 1, &m_TrianglePairs_UAV, &zero); // setze den Buffer-Counter auf 0 zurück
 
-	int maxLCellTriangleBlockSize = 1500;
-	int curWorkPosition = 0;
-	bool firstStep = true;
-
 	int groupCount = (int)ceil(m_TrianglePairsCount / 1024.0);
 	deviceContext->Dispatch(groupCount, 1, 1);
 
@@ -972,6 +964,7 @@ void CollisionDetectionManager::_9_FindTrianglePairs(bool backBufferIsInput)
 	//Arguments: The buffer, The subresource (0), A destination box(NULL), The data to write to the buffer, the size of the buffer, the depth of the buffer
 }
 
+// ******* 10. Überprüfe alle Dreiecke in Triangle-Pairs, ob sie sich tatsächlich überschneiden  *******
 void CollisionDetectionManager::_10_TriangleIntersections()
 {
 	m_curComputeShader = m_ComputeShaderVector[11];
@@ -996,6 +989,7 @@ void CollisionDetectionManager::_10_TriangleIntersections()
 
 }
 
+// ******* 11. Überschreibe den Ergebnis-Buffer mit 0en  *******
 void CollisionDetectionManager::_11_ZeroIntersectionCenters()
 {
 	m_curComputeShader = m_ComputeShaderVector[12];
@@ -1042,7 +1036,7 @@ void CollisionDetectionManager::Frame()
 	//_8_SortCellTrianglePairs_GetResult();
 
 	_9_FindTrianglePairs(backBufferIsInput);
-	_9_FindTrianglePairs_GetResult();
+	//_9_FindTrianglePairs_GetResult();
 
 	_10_TriangleIntersections();
 	_10_TriangleIntersections_GetFinalResult();

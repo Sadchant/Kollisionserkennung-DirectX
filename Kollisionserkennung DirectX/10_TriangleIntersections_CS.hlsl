@@ -1,6 +1,6 @@
 #include "HlslSharedDefines.h"
 #include "0_ComputeShaderGlobals.hlsl"
-#include "TriangleIntersections_HLSL.hlsl"
+#include "TriangleIntersections.hlsl"
 
 // da die tatsächlichen Dreiecke miteinander überprüft werden, werden die übrpsünglichen Index- und Vertex-Buffer benötigt
 StructuredBuffer<float3> vertexBuffer : register(t0);
@@ -49,5 +49,4 @@ void main(uint3 DTid : SV_DispatchThreadID)
         intersectingObjects[curTrianglePair.objectID1] = 1;
         intersectingObjects[curTrianglePair.objectID2] = 1;
     }
-
 }
