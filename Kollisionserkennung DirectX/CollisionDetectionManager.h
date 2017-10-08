@@ -181,7 +181,6 @@ private:
 	ID3D11Buffer* m_Loops_CBuffer;
 	ID3D11Buffer* m_RadixSort_ExclusivePrefixSumData_CBuffer;
 	ID3D11Buffer* m_RadixSort_ExclusivePrefixSumData2_CBuffer;
-	ID3D11Buffer* m_Bool_UseWorkPositions_CBuffer;
 
 	// Zero Buffer, um Buffer mit 0en zu füllen
 	CellTrianglePair* m_CellTrianglePairs_Zero;

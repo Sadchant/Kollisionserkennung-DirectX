@@ -51,8 +51,6 @@ CollisionDetectionManager::CollisionDetectionManager()
 	m_Loops_CBuffer = 0;
 	m_RadixSort_ExclusivePrefixSumData_CBuffer = 0;
 	m_RadixSort_ExclusivePrefixSumData2_CBuffer = 0;
-	m_Bool_UseWorkPositions_CBuffer = 0;
-
 
 	m_Result_Buffer1 = 0;
 	m_Result_Buffer2_1 = 0;
@@ -109,9 +107,7 @@ void CollisionDetectionManager::Initialize(ID3D11Device* device, ID3D11DeviceCon
 	m_Loops_CBuffer = CreateConstantBuffer(sizeof(SingleUINT), D3D11_USAGE_DEFAULT, NULL);
 	m_RadixSort_ExclusivePrefixSumData_CBuffer = CreateConstantBuffer(sizeof(RadixSort_ExclusivePrefixSumData), D3D11_USAGE_DEFAULT, NULL);
 	m_RadixSort_ExclusivePrefixSumData2_CBuffer = CreateConstantBuffer(sizeof(RadixSort_ExclusivePrefixSumData2), D3D11_USAGE_DEFAULT, NULL);
-	m_Bool_UseWorkPositions_CBuffer = CreateConstantBuffer(sizeof(SingleUINT), D3D11_USAGE_DEFAULT, NULL);
-
-	
+		
 	m_hwnd = hwnd;
 	InitComputeShaderVector();
 
@@ -397,7 +393,6 @@ void CollisionDetectionManager::Shutdown()
 	SAFERELEASE(m_Loops_CBuffer);
 	SAFERELEASE(m_RadixSort_ExclusivePrefixSumData_CBuffer);
 	SAFERELEASE(m_RadixSort_ExclusivePrefixSumData2_CBuffer);
-	SAFERELEASE(m_Bool_UseWorkPositions_CBuffer);
 
 	SAFEDELETEARRAY(m_CellTrianglePairs_Zero);
 
@@ -964,12 +959,6 @@ void CollisionDetectionManager::_9_FindTrianglePairs(bool backBufferIsInput)
 	int curWorkPosition = 0;
 	bool firstStep = true;
 
-	//while(curWorkPosition < maxLCellTriangleBlockSize)
-	//// Constant Buffer updaten
-	//SingleUINT s_UseWorkPositions = { (UINT)curStartLevel };
-	//deviceContext->UpdateSubresource(m_StartLevel_CBuffer, 0, NULL, &s_StartLevel, 0, 0);
-	//deviceContext->CSSetConstantBuffers(1, 1, &m_StartLevel_CBuffer);
-
 	int groupCount = (int)ceil(m_TrianglePairsCount / 1024.0);
 	deviceContext->Dispatch(groupCount, 1, 1);
 
@@ -1053,7 +1042,7 @@ void CollisionDetectionManager::Frame()
 	//_8_SortCellTrianglePairs_GetResult();
 
 	_9_FindTrianglePairs(backBufferIsInput);
-	//_9_FindTrianglePairs_GetResult();
+	_9_FindTrianglePairs_GetResult();
 
 	_10_TriangleIntersections();
 	_10_TriangleIntersections_GetFinalResult();

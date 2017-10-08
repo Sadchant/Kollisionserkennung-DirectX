@@ -15,6 +15,7 @@ cbuffer radixSort_ExclusivePrefixSum_2_Data : register(b0)
     uint read2BitsFromHere;
 }
 
+// führe den zweiten Teil der exkclusive Prefix Sum durch
 [numthreads(LINEAR_XTHREADS, LINEAR_YTHREADS, LINEAR_ZTHREADS)]
 void main(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadID)
 {
@@ -36,48 +37,51 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadID)
             groupSortIndices[scaledGroupLocalID + 1].array[2] = 0;
             groupSortIndices[scaledGroupLocalID + 1].array[3] = 0;
         }
-        else
+        else // ansonsten kopiere den Input aus sortIndices in den groupshared Memory
             groupSortIndices[scaledGroupLocalID + 1] = sortIndices[dataID];
     }
+    // wie in erstem Teil der excklusive Prefix Sum werden auch hier im zweiten Teil von jedem Thread 2 Werte in den groupshared Memory kopiert
     if ((dataID - threadDistance / 2) < sortIndicesLength)
     {
         groupSortIndices[scaledGroupLocalID] = sortIndices[dataID - threadDistance / 2];
-
     }
-    GroupMemoryBarrierWithGroupSync();
+    GroupMemoryBarrierWithGroupSync(); // synce, nachdem der groupshared Memory inital befüllt wurde
 
-    uint curCombineDistance = pow(2, loops) / 2; // + 1, weil uns die Größe der am Ende bearbeiten Elemente interessiert und der letzte Thread schreibt in 2 Elemente
-    uint threadAliveNumber = curCombineDistance * 2;
-    for (uint i = 11; i > 11 - loops; i--)
+    // der zweite Teil der exclusive Prefix Sum fängt bei einer hohen Kombinier-Distanz an und halbiert diese in jedem for-Durchlauf
+    uint curCombineDistance = pow(2, loops) / 2; 
+    uint threadAliveNumber = curCombineDistance * 2; // am Anfang arbeiten nur wenige Threads, mit jedem Durchlauf dopplet so viele
+    for (uint i = 11; i > 11 - loops; i--) // das herunterzählende i symbolisiert das rückwärts abarbeiten gegenüber zu Teil 1
     {
         if (dataID < sortIndicesLength)
         {
-            if (scaledGroupLocalID % threadAliveNumber == 0)
+            // sortiere die Threads aus, die in diesem Durchlauf nicht arbeiten
+            if (scaledGroupLocalID % threadAliveNumber == 0) 
             {
-                uint curID = scaledGroupLocalID + curCombineDistance * 2 - 1;
-                for (uint k = 0; k < 4; k++)
+                uint curID = scaledGroupLocalID + curCombineDistance * 2 - 1; // berechne die ID, mit der auf den groupshared memory zugeriffen wird
+                for (uint k = 0; k < 4; k++) // bearbeite alle 4 Array-Einträge (es ist ein 2Bit-Pass, also 4 Einträge)
                 {
-                    uint copyValue = groupSortIndices[curID].array[k];
+                    uint copyValue = groupSortIndices[curID].array[k]; // merke den rechten Wert in copyValue
 
-                    uint value1 = groupSortIndices[curID].array[k];
-                    uint value2 = groupSortIndices[curID - curCombineDistance].array[k];
-                    groupSortIndices[curID].array[k] = value1 + value2;
-                    //groupSortIndices[curID].array[k] += groupSortIndices[curID - curCombineDistance];
-                    groupSortIndices[curID - curCombineDistance].array[k] = copyValue;
+                    uint value2 = groupSortIndices[curID - curCombineDistance].array[k]; // value2 ist der linke Wert
+                    groupSortIndices[curID].array[k] = copyValue + value2; // überschreibe den rechten Wert mit der Addition
+                    groupSortIndices[curID - curCombineDistance].array[k] = copyValue; // überschreibe den linken Wert mit dem vorher gemerkten rechten Wert
                 }
             }
         }
-        GroupMemoryBarrierWithGroupSync();
-        curCombineDistance /= 2;
-        threadAliveNumber /= 2;
+        GroupMemoryBarrierWithGroupSync(); // synce am Ende von jedem for-Durchlauf
+        curCombineDistance /= 2; // die Kombinier-Distanz wird halb so groß
+        threadAliveNumber /= 2; // doppelt so viele Threads werden durch die halbierte threadAliveNumber im nächsten Durchlauf laufen
     }
 
+    // am Ende wird der groupsharedMemory wieder zurückopiert in den Buffer an die Stellen, aus denen an Anfang ausgelesen wurde
     if (dataID < sortIndicesLength)
     {
         sortIndices[dataID] = groupSortIndices[scaledGroupLocalID + 1];
         sortIndices[dataID - threadDistance / 2] = groupSortIndices[scaledGroupLocalID];
     }
 
+    // sortIndices hat einen zusätzlichen Wert am Ende, der relevant wird falls das letzte Element in sortIndices initial eine 1 war, die würde auf die Gesamtsumme nicht aufaddiert
+    // dafür ist die zusätzliche Stelle am Ende da, um den richtigen Wert der Gesamtsumme zu beinhalten
     if (dataID == sortIndicesLength - 1) // sollte dieser Thread für das Kopieren des regulär letzten Elements des Buffers zuständig sein
     {
         uint cellTrianglePairsLength;
@@ -92,6 +96,5 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadID)
             else // ansonsten ist es der selbe Wert
                 sortIndices[sortIndicesLength].array[l] = sortIndices[sortIndicesLength - 1].array[l];
         }
-
     }
 }
