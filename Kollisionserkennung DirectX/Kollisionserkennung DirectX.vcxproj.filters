@@ -161,15 +161,10 @@
     <None Include="8_3_RadixSort_Sort_CS.hlsl" />
     <None Include="9_FindTrianglePairs_CS.hlsl" />
     <None Include="10_TriangleIntersections_CS.hlsl" />
-    <None Include="TriangleIntersection.hlsl">
-      <Filter>Source Files</Filter>
-    </None>
-    <None Include="TriangleIntersections_HLSL.hlsl">
-      <Filter>Source Files</Filter>
-    </None>
-    <None Include="CoplanarTriangleIntersection.hlsl">
-      <Filter>Source Files</Filter>
-    </None>
+    <None Include="TriangleIntersection.hlsl" />
+    <None Include="TriangleIntersections_HLSL.hlsl" />
+    <None Include="CoplanarTriangleIntersection.hlsl" />
+    <None Include="11_ZeroIntersectionCenters_CS.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Kollisionserkennung DirectX.rc">

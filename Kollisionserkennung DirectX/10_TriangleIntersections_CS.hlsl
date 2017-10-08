@@ -6,7 +6,7 @@ StructuredBuffer<float3> vertexBuffer : register(t0);
 StructuredBuffer<int3> triangleBuffer : register(t1);
 
 //RWStructuredBuffer<CellTrianglePair> cellTrianglePairs : register(u0);
-RWStructuredBuffer<TrianglePair> trianglePairs : register(u5);
+RWStructuredBuffer<TrianglePair> trianglePairs : register(u0);
 RWStructuredBuffer<uint> intersectingObjects : register(u1);
 RWStructuredBuffer<float3> intersectCenters : register(u2);
 

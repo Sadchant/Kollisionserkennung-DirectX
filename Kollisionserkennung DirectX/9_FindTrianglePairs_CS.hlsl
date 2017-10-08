@@ -5,9 +5,6 @@ RWStructuredBuffer<CellTrianglePair> cellTrianglePairs : register(u0);
 RWStructuredBuffer<BoundingBox> boundingBoxes : register(u1);
 RWStructuredBuffer<TrianglePair> trianglePairs : register(u2);
 
-RWStructuredBuffer<uint> cellTrianglePairsWorkPositions : register(u3);
-
-
 cbuffer Bool_UseWorkPositions : register(b1)
 {
     // wird direkt aus cellTrianglePairs gelesen oder die ID, wo der ALgorithmus startet aus CellTrianglePairsWorkPositions benutzt?
@@ -39,8 +36,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
         return;
     uint curID = id + 1;
     CellTrianglePair nextCellTrianglePair = cellTrianglePairs[curID];
-    int counter = 0;
-    while ((curCellTrianglePair.cellID == nextCellTrianglePair.cellID) && (nextCellTrianglePair.cellID != 0) && counter < 1425)
+    while ((curCellTrianglePair.cellID == nextCellTrianglePair.cellID) && (nextCellTrianglePair.cellID != 0))
     {
         if (curCellTrianglePair.objectID != nextCellTrianglePair.objectID)
         {
@@ -49,13 +45,9 @@ void main(uint3 DTid : SV_DispatchThreadID)
                 TrianglePair newTrianglePair = { curCellTrianglePair.triangleID, nextCellTrianglePair.triangleID, curCellTrianglePair.objectID, nextCellTrianglePair.objectID };
                 uint curCount = trianglePairs.IncrementCounter();
                 trianglePairs[curCount] = newTrianglePair;
-                //trianglePairs.Append(newTrianglePair);
             }
         }
         curID++;
         nextCellTrianglePair = cellTrianglePairs[curID];
-        counter++;
     }
-    //TrianglePair newTrianglePair = { curCellTrianglePair.cellID, 12 };
-    //trianglePairs.Append(newTrianglePair);
 }
