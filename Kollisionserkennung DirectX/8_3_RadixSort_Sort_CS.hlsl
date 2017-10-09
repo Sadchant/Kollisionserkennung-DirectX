@@ -5,7 +5,9 @@ RWStructuredBuffer<SortIndices> sortIndices : register(u0);
 RWStructuredBuffer<CellTrianglePair> cellTrianglePairsInput : register(u1);
 RWStructuredBuffer<CellTrianglePair> cellTrianglePairsOutput : register(u2);
 
-
+// nach dem die exclusive Prefix Sum für den RadixSort auf 2 Bits ausgeführt wurde, stehen in SortIndices die 
+// 4 Ids, an deren Stelle die zu sortierenden Elemente (cellTrianglePairs) sortiert werden
+// in der letzten Stelle von SortIndices stehen die Gesamt-Summen, die auf die IDs des nächsten Bits aufaddiert werden müssen
 [numthreads(LINEAR_XTHREADS, LINEAR_YTHREADS, LINEAR_ZTHREADS)]
 void main( uint3 DTid : SV_DispatchThreadID )
 {
@@ -19,19 +21,22 @@ void main( uint3 DTid : SV_DispatchThreadID )
 
     sortIndices.GetDimensions(sortIndicesLength, stride);
 
-    SortIndices curSortIndex = sortIndices[id];
-    SortIndices nextSortIndex = sortIndices[id + 1];
+    SortIndices curSortIndex = sortIndices[id]; // hole den aktuellen Index aus sortIndices
+    SortIndices nextSortIndex = sortIndices[id + 1]; // der nächste Index wird gebraucht, um zu ermitteln ob das aktuelle Element bewegt werden soll
     uint curOffset = 0;
-    for (int i = 0; i < 4; i++)
+    for (int i = 0; i < 4; i++) // gehe über alle Einträge für die 2 Bits
     {
-        if (i > 0)
-            curOffset += sortIndices[sortIndicesLength - 1].array[i - 1];
-        if (curSortIndex.array[i] != nextSortIndex.array[i])
+        if (i > 0) // füe alle bits außer dem 0ten muss der Offset der vorherigen Bits beim Sortieren aufaddiert werden
+            curOffset += sortIndices[sortIndicesLength - 1].array[i - 1]; // ehöhe den Offset um die Gesamtsumme des vorherigen EIntrags im SortIndices-Array
+        // sortiere den aktuellen Wert nur, wenn der Index im aktuell bearbeiteten Array-Eintrag sich vom gleichen Array-Eintrag im nächsten SOrtIndices-Eintrag unterscheidet
+        if (curSortIndex.array[i] != nextSortIndex.array[i]) 
         {
+            // nimm den Wert der exclusive Prefix Sum für den aktuell bearbeiteten binären Wert und addiere, falls es nicht der 0te ist, den Offset vom letzten binären Wert
+            // schreibe den aktuell bearbeiteten zu sortierenden Wert an diese ermittelte Stelle im Outputbuffer
             cellTrianglePairsOutput[curSortIndex.array[i] + curOffset] = cellTrianglePairsInput[id];
+            // der Outputbuffer enthält nun die sortierten Werte des Inputbuffers
         }
     }
-    //cellTrianglePairsOutput[id] = cellTrianglePairs[id];
 }
 
 

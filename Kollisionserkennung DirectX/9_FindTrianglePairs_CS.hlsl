@@ -1,29 +1,26 @@
 #include "HlslSharedDefines.h"
 #include "0_ComputeShaderGlobals.hlsl"
 
-RWStructuredBuffer<CellTrianglePair> cellTrianglePairs : register(u0);
-RWStructuredBuffer<BoundingBox> boundingBoxes : register(u1);
-RWStructuredBuffer<TrianglePair> trianglePairs : register(u2);
-
-RWStructuredBuffer<uint> cellTrianglePairsWorkPositions : register(u3);
+RWStructuredBuffer<CellTrianglePair> cellTrianglePairs : register(u0); // der Input, nach Zellen-IDs sortierte CellTrianglePairs
+RWStructuredBuffer<BoundingBox> boundingBoxes : register(u1); // um zu überprüfen, ob sie sich überschneiden
+RWStructuredBuffer<TrianglePair> trianglePairs : register(u2); // Buffer mit COUNTER, hier wird das Ergebnis hineingeschrieben
 
 
-cbuffer Bool_UseWorkPositions : register(b1)
-{
-    // wird direkt aus cellTrianglePairs gelesen oder die ID, wo der ALgorithmus startet aus CellTrianglePairsWorkPositions benutzt?
-    uint bool_UseWorkPositions; 
-};
-
+// überprüfe, ob sich die beiden Bounding Boxes überschneiden
 bool checkBoundingBoxIntersection(uint boundingBoxID1, uint boundingBoxID2)
 {
     BoundingBox boundingBox1 = boundingBoxes[boundingBoxID1];
     BoundingBox boundingBox2 = boundingBoxes[boundingBoxID2];
+    // wenn die eine Bounding Box in einer Dimension komplett außerhalb der anderen liegt gibt es keine Überschneidung
     return !(((boundingBox1.maxPoint.x < boundingBox2.minPoint.x) || (boundingBox1.minPoint.x > boundingBox2.maxPoint.x)) ||
              ((boundingBox1.maxPoint.y < boundingBox2.minPoint.y) || (boundingBox1.minPoint.y > boundingBox2.maxPoint.y)) ||
              ((boundingBox1.maxPoint.z < boundingBox2.minPoint.z) || (boundingBox1.minPoint.z > boundingBox2.maxPoint.z)));
 }
 
+// gehe vom bearbeiteten Punkt durch die Cell-Triangle-Pairs, solange die Zellen-ID gleich ist
+// sollten die ObjektIDs unterschiedlich sein, überprüfe
 
+// ****** sollte eigentlich mit effizientem Load-Balancing durchgeführt werden, das hier ist eine simple Lösung, die aber langsam ist *****
 [numthreads(LINEAR_XTHREADS, LINEAR_YTHREADS, LINEAR_ZTHREADS)]
 void main(uint3 DTid : SV_DispatchThreadID)
 {
@@ -33,29 +30,27 @@ void main(uint3 DTid : SV_DispatchThreadID)
 
     if (id >= cellTrianglePairsLength)
         return;
-    CellTrianglePair curCellTrianglePair = cellTrianglePairs[id];
+    // mit diesem cellTrianglePair werden alle darauf folgenden cellTrianglePairs im aktuellen Zellenblock verglichen
+    CellTrianglePair startCellTrianglePair = cellTrianglePairs[id]; 
     
-    if (curCellTrianglePair.cellID == 0)
+    if (startCellTrianglePair.cellID == 0) // id 0 beinhaltet die gesamte Szene, sie beinhaltet keine Dreiecke, man hat also den leeren Bereich im Buffer erreicht
         return;
-    uint curID = id + 1;
-    CellTrianglePair nextCellTrianglePair = cellTrianglePairs[curID];
-    int counter = 0;
-    while ((curCellTrianglePair.cellID == nextCellTrianglePair.cellID) && (nextCellTrianglePair.cellID != 0))
+    uint curID = id + 1; // curID ist die ID des Elements, das mit dem startCellTrianglePair verglichen werden wird
+    CellTrianglePair nextCellTrianglePair = cellTrianglePairs[curID]; // nextCelltrianglePair ist das zu vergleichende Element
+    // solange die ID des nächsten Elements gleich der ID von startCellTrianglePair ist, durchlaufe weiter den Buffer
+    while ((startCellTrianglePair.cellID == nextCellTrianglePair.cellID) && (nextCellTrianglePair.cellID != 0)) 
     {
-        if (curCellTrianglePair.objectID != nextCellTrianglePair.objectID)
+        if (startCellTrianglePair.objectID != nextCellTrianglePair.objectID) // vergleiche nur Boundingboxes mit unterschiedlichen Objekt-IDs
         {
-            if (checkBoundingBoxIntersection(curCellTrianglePair.triangleID, nextCellTrianglePair.triangleID))
+            if (checkBoundingBoxIntersection(startCellTrianglePair.triangleID, nextCellTrianglePair.triangleID)) // wenn sich die Bounding Boxes schneiden
             {
-                TrianglePair newTrianglePair = { curCellTrianglePair.triangleID, nextCellTrianglePair.triangleID, curCellTrianglePair.objectID, nextCellTrianglePair.objectID };
+                // füge ein neues TrianglePair mit den beiden Triangle- und Objekt-IDs dem Ergebnis-Buffer hinzu
+                TrianglePair newTrianglePair = { startCellTrianglePair.triangleID, nextCellTrianglePair.triangleID, startCellTrianglePair.objectID, nextCellTrianglePair.objectID };
                 uint curCount = trianglePairs.IncrementCounter();
                 trianglePairs[curCount] = newTrianglePair;
-                //trianglePairs.Append(newTrianglePair);
             }
         }
         curID++;
-        nextCellTrianglePair = cellTrianglePairs[curID];
-        counter++;
+        nextCellTrianglePair = cellTrianglePairs[curID]; // ermittle mit der hochgezählten curID das nächste Element
     }
-    //TrianglePair newTrianglePair = { curCellTrianglePair.cellID, 12 };
-    //trianglePairs.Append(newTrianglePair);
 }
