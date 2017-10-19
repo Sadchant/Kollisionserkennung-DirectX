@@ -3,6 +3,7 @@
 #include <vector>
 #include <math.h>
 #include <chrono>
+#include <thread>
 
 #include "modelclass.h"
 #include "HlslSharedDefines.h"
@@ -10,6 +11,11 @@
 #include "Util.h"
 
 using namespace chrono;
+
+struct Vertex
+{
+	float x, y, z;
+};
 
 class CollisionDetectionManager
 {
@@ -28,10 +34,7 @@ public:
 	void OutputShaderErrorMessage(ID3D10Blob * errorMessage, HWND hwnd, WCHAR * shaderFilename);
 
 private:
-	struct Vertex
-	{
-		float x, y, z;
-	};
+	
 	struct Vector
 	{
 		float x, y, z;
@@ -243,5 +246,8 @@ private:
 	ID3D11UnorderedAccessView* m_TrianglePairs_UAV;
 	ID3D11UnorderedAccessView* m_IntersectingObjects_UAV;
 	ID3D11UnorderedAccessView* m_IntersectCenters_UAV;
+
+	thread* m_CopyBackThread;
+	bool m_CopyBackThreadExists;
 };
 
