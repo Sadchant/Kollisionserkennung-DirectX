@@ -123,7 +123,10 @@ void CollisionDetectionManager::Initialize(ID3D11Device* device, ID3D11DeviceCon
 	CreateVertexAndTriangleArray(objects);
 	CreateSceneBuffersAndViews();
 
+	m_SortedBitsCount = (int)ceil(log2(m_TreeSize));
+
 	m_CopyTo1 = true;
+
 }
 
 // befülle m_ComputeShaderVector mit allen Compute Shadern
@@ -819,7 +822,7 @@ bool CollisionDetectionManager::_8_SortCellTrianglePairs()
 	int read2BitsFromHere = 0;
 	bool backBufferIsInput = false;
 
-	while (read2BitsFromHere < 22)
+	while (read2BitsFromHere < m_SortedBitsCount)
 	{
 		// ####################################################_8_1_####################################################
 		m_curComputeShader = m_ComputeShaderVector[7];
@@ -1011,7 +1014,6 @@ void CollisionDetectionManager::Frame()
 
 	//auto end = high_resolution_clock::now();
 	//cout << "Buffer created" << ": " << duration_cast<milliseconds>(end - begin).count() << "ms" << endl;
-
 	_1_BoundingBoxes();
 	//_1_BoundingBoxes_GetResult();
 
@@ -1040,6 +1042,7 @@ void CollisionDetectionManager::Frame()
 	//_9_FindTrianglePairs_GetResult();
 
 	_10_TriangleIntersections();
+	return;
 	_10_TriangleIntersections_GetFinalResult();
 
 	_11_ZeroIntersectionCenters();
