@@ -21,7 +21,7 @@ cbuffer Loops : register(b2)
 // am Ende stehen im untersten Level die IDs der Zellen, die an der Position im Raum die Blattzellen sind
 // jeder Zweig hat also an seiner untersten Stelle die ID der in diesem Zweig als LEAF markierten Zelle <stehen
 [numthreads(_6_FILLLEAFINDEXTREE_XTHREADS, _6_FILLLEAFINDEXTREE_YTHREADS, _6_FILLLEAFINDEXTREE_ZTHREADS)]
-void main( uint3 DTid : SV_DispatchThreadID )
+void main(uint3 DTid : SV_DispatchThreadID)
 {
     uint curLevel = startLevel; // setzte das aktuelle Level
     for (uint i = 0; i < loops; i++) // funktioniert ähnlich wie in 5_FillTypeTree_CS, aber läuft diesmal von 0 - X und nicht von X - 0, zudem kein <=, da andersrum gezählt wird und die cpu die anzahl der durchläufe übergibt
@@ -57,17 +57,18 @@ void main( uint3 DTid : SV_DispatchThreadID )
                         if (curParentType == LEAF) // sollte die Elternzelle ein Blatt sein
                         {
                             leafIndexTree[curChild1DID] = curParent1DID; // trage im LeafIndexTree in alle Kindzellen den Index der ELtern-ID ein
+                            typeTree[curChild1DID] = EMPTY; // markiere in der Kindzelle, dass das Blatt schon gefunden wurde und markiere etwaige obsolete als LEAF markierte Zellen mit EMPTY (sonst werden falsche LEAF-Werte nach unten kopiert)
                         }
-                        else if (curParentType == EMPTY) // sollte die ELternzelle leer sein oder als COPYDOWN markiert, muss es in einem höhren Level schon ein Blatt gegeben haben
+                        else if (curParentType == EMPTY) // sollte die ELternzelle leer sein, muss es in einem höhren Level schon ein Blatt gegeben haben
                         {
-                            leafIndexTree[curChild1DID] = curParentLeafIndex; // als kopiere den Wert aus leafIndexTree der Elternzelle auf die Kindzellen
+                            leafIndexTree[curChild1DID] = curParentLeafIndex; // also kopiere den Wert aus leafIndexTree der Elternzelle auf die Kindzellen
                             typeTree[curChild1DID] = EMPTY; // markiere in der Kindzelle, dass das Blatt schon gefunden wurde und markiere etwaige obsolete als LEAF markierte Zellen mit EMPTY (sonst werden falsche LEAF-Werte nach unten kopiert)
                         }
                         else // ansonsten muss es eine interne Zelle sein, die Kinder können! also Blätter sein
                             leafIndexTree[curChild1DID] = curChild1DID; // trage jedes Mal die Child-IDs ein, sollten die Kinder auch intern sein ist es zwar überflüssig, 
                                                                         // schadet aber auch nicht und es entsteht weniger Threaddivergenz, da die if-Abfrage weggelassen wird
-                        }
                     }
+                }
             }
         }
         AllMemoryBarrierWithGroupSync(); // warte darauf, dass alle Gruppen in diesem Level fertig sind, da der nächste Durchlauf Ergebnisse aus anderen Threads verarbeitet

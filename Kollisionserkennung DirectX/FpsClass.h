@@ -13,6 +13,8 @@
 #include <windows.h>
 #include <mmsystem.h>
 
+#define AMOUNT 50
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // Class name: FpsClass
@@ -31,4 +33,7 @@ public:
 private:
 	int m_fps, m_count;
 	unsigned long m_startTime;
+
+	int m_Counter;
+	unsigned long m_Last10FrameMS[AMOUNT] = {0};
 };

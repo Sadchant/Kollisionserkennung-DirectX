@@ -407,7 +407,8 @@ bool TextClass::SetFps(int fps, ID3D11DeviceContext* deviceContext)
 	_itoa_s(fps, tempString, 10);
 
 	// Setup the fps string.
-	strcpy_s(fpsString, "Fps: ");
+	//strcpy_s(fpsString, "Fps: ");
+	strcpy_s(fpsString, "ms/Frame: ");
 	strcat_s(fpsString, tempString);
 
 	// If fps is 60 or above set the fps color to green.

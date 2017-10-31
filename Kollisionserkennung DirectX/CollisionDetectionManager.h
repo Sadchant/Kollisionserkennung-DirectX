@@ -146,6 +146,7 @@ private:
 	int m_CounterTreesSize;
 	int m_CellTrianglePairsCount;
 	int m_SortIndicesCount;
+	int m_SortedBitsCount;
 	int m_TrianglePairsCount;
 	int m_IntersectionCentersCount;
 	bool m_CopyTo1;
