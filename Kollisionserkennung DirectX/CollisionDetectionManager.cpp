@@ -89,8 +89,6 @@ CollisionDetectionManager::CollisionDetectionManager()
 	m_TrianglePairs_UAV = 0;
 	m_IntersectingObjects_UAV = 0;
 	m_IntersectCenters_UAV = 0;
-
-	m_CopyBackThreadExists = false;
 }
 
 
@@ -383,7 +381,7 @@ void CollisionDetectionManager::Shutdown()
 	SAFEDELETEARRAY(m_Results8_3);
 	SAFEDELETEARRAY(m_Results9);
 	SAFEDELETEARRAY(m_Results10_1_IntersectingObjects);
-	SAFEDELETEARRAY(m_Results10_2_IntersectionPoints);
+	//SAFEDELETEARRAY(m_Results10_2_IntersectionPoints);
 
 	SAFERELEASE(m_ReduceData_CBuffer);
 	SAFERELEASE(m_ObjectCount_CBuffer);
@@ -1042,7 +1040,6 @@ void CollisionDetectionManager::Frame()
 	//_9_FindTrianglePairs_GetResult();
 
 	_10_TriangleIntersections();
-	return;
 	_10_TriangleIntersections_GetFinalResult();
 
 	_11_ZeroIntersectionCenters();
@@ -1381,32 +1378,6 @@ void CollisionDetectionManager::_9_FindTrianglePairs_GetResult()
 	cout << "tatsächlicher Count  : " << i << endl;
  }
 
-void AsyncCopyFromGPU(bool copyTo1, ID3D11Buffer* intersectCenters_Result1_Buffer, ID3D11Buffer* intersectCenters_Result2_Buffer, ID3D11Buffer* intersectCenters_Buffer, ID3D11DeviceContext* deviceContext)
-{
-	D3D11_MAPPED_SUBRESOURCE MappedResource10_2 = { 0 };
-	if (copyTo1)
-	{
-		deviceContext->CopyResource(intersectCenters_Result1_Buffer, intersectCenters_Buffer);
-		deviceContext->Map(intersectCenters_Result2_Buffer, 0, D3D11_MAP_READ, 0, &MappedResource10_2);
-	}
-	else
-	{
-		deviceContext->CopyResource(intersectCenters_Result2_Buffer, intersectCenters_Buffer);
-		deviceContext->Map(intersectCenters_Result1_Buffer, 0, D3D11_MAP_READ, 0, &MappedResource10_2);
-	}
-	
-	_Analysis_assume_(MappedResource10_2.pData);
-	assert(MappedResource10_2.pData);
-	Vertex* results10_2_IntersectionPoints = (Vertex*)MappedResource10_2.pData;
-	if (copyTo1)
-		deviceContext->Unmap(intersectCenters_Result2_Buffer, 0);
-	else
-		deviceContext->Unmap(intersectCenters_Result1_Buffer, 0);
-}
-
-void blobb(bool copyTo1, ID3D11Buffer* intersectCenters_Result1_Buffer, ID3D11Buffer* intersectCenters_Result2_Buffer, ID3D11Buffer* intersectCenters_Buffer, ID3D11DeviceContext* deviceContext)
-{}
-
 void CollisionDetectionManager::_10_TriangleIntersections_GetFinalResult()
 {
 	SAFEDELETEARRAY(m_Results10_1_IntersectingObjects);
@@ -1419,14 +1390,7 @@ void CollisionDetectionManager::_10_TriangleIntersections_GetFinalResult()
 	memcpy(m_Results10_1_IntersectingObjects, MappedResource10_1.pData, m_ObjectCount * sizeof(UINT));
 	deviceContext->Unmap(m_IntersectingObjects_Result_Buffer, 0);
 
-	//m_CopyBackThread = new thread(AsyncCopyFromGPU, m_CopyTo1, m_IntersectCenters_Result1_Buffer, m_IntersectCenters_Result2_Buffer, m_IntersectCenters_Buffer, deviceContext);
-
-	if (m_CopyBackThread != NULL)
-		m_CopyBackThread->join();
-	delete m_CopyBackThread;
-	m_CopyBackThread = new thread(AsyncCopyFromGPU, m_CopyTo1, m_IntersectCenters_Result1_Buffer, m_IntersectCenters_Result2_Buffer, m_IntersectCenters_Buffer, deviceContext);
-
-	/*D3D11_MAPPED_SUBRESOURCE MappedResource10_2 = { 0 };
+	D3D11_MAPPED_SUBRESOURCE MappedResource10_2 = { 0 };
 
 	if (m_CopyTo1)
 	{
@@ -1445,7 +1409,7 @@ void CollisionDetectionManager::_10_TriangleIntersections_GetFinalResult()
 	if (m_CopyTo1)
 		deviceContext->Unmap(m_IntersectCenters_Result2_Buffer, 0);
 	else
-		deviceContext->Unmap(m_IntersectCenters_Result1_Buffer, 0);*/
+		deviceContext->Unmap(m_IntersectCenters_Result1_Buffer, 0);
 
 
 	/*int i = 0;

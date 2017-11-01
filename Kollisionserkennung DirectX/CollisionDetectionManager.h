@@ -247,8 +247,5 @@ private:
 	ID3D11UnorderedAccessView* m_TrianglePairs_UAV;
 	ID3D11UnorderedAccessView* m_IntersectingObjects_UAV;
 	ID3D11UnorderedAccessView* m_IntersectCenters_UAV;
-
-	thread* m_CopyBackThread;
-	bool m_CopyBackThreadExists;
 };
 

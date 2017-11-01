@@ -182,13 +182,24 @@ void Scene::Shutdown()
 		m_LightShader = 0;
 	}*/
 
-
-	for (int i = 0; i < m_Objects.size(); i++)
+	// :D
+	if (LARGESCENE) 
 	{
-		ModelClass* curModelClass = m_Objects[i];
+		ModelClass* curModelClass = m_Objects[0];
 		curModelClass->Shutdown();
 		delete curModelClass;
 	}
+	else
+	{
+		for (int i = 0; i < m_Objects.size(); i++)
+		{
+			ModelClass* curModelClass = m_Objects[i];
+			curModelClass->Shutdown();
+			delete curModelClass;
+		}
+	}
+
+	
 	m_Objects.clear();
 
 	// Release the camera object.
