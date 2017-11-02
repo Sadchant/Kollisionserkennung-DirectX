@@ -163,6 +163,7 @@ bool D3DClass::Initialize(int screenWidth, int screenHeight, bool vsync, HWND hw
 	// Gets a DXGI 1.0 description of an adapter(or video card).
 	// in adapterDesc steht danach Name der Graka, Videospeicher etc
 	result = adapter->GetDesc(&adapterDesc);
+	wcout << "used GPU: " << adapterDesc.Description << endl;
 	if (FAILED(result))
 	{
 		return false;
