@@ -29,7 +29,7 @@ D3DClass::~D3DClass()
 // die Funktion befüllt mit Hilfe der am Anfang deklarierten lokalen Hilfsvariablen die Membervariablen der Klasse
 // screenWidth/screenHeight, hwnd: Daten vom vorher erzeugten Fenster, damit Direct3D damit arbeiten kann
 bool D3DClass::Initialize(int screenWidth, int screenHeight, bool vsync, HWND hwnd, bool fullscreen,
-	float screenDepth, float screenNear)
+	float screenDepth, float screenNear, int gpu)
 {
 	HRESULT result; // Wird von diversen Windows-Funktionen zurückgegeben, beschreibt Fehler/Warnung
 	IDXGIFactory* factory; // Factory, die DXGI-Objekte erzeugen kann, die sich um Vollbild-Umschaltungen kümmern
@@ -88,11 +88,23 @@ bool D3DClass::Initialize(int screenWidth, int screenHeight, bool vsync, HWND hw
 	}
 
 	// j - 2 sollte auf einem PC = 0 ergeben, auf einem Laptop = 1, somit dedizierte GPU
-	// j - 1 ergibt den 
-	if (j > 1)
-		adapter = vAdapters[j - 2];
+	if (gpu == -1) 
+	{
+		if (j > 1)
+			adapter = vAdapters[j - 2];
+		else
+			adapter = vAdapters[0];
+	}
+	else if(gpu < vAdapters.size())
+	{
+		adapter = vAdapters[gpu];
+	}
 	else
-		adapter = vAdapters[0];
+	{
+		cout << "Error: ungueltiger GPU-Parameter: " << gpu << endl;
+		return false;
+	}
+	
 
 
 	/*IDXGIOutput ** pOutput = new IDXGIOutput*[j];
@@ -161,13 +173,15 @@ bool D3DClass::Initialize(int screenWidth, int screenHeight, bool vsync, HWND hw
 
 	// Get the adapter (video card) description.
 	// Gets a DXGI 1.0 description of an adapter(or video card).
-	// in adapterDesc steht danach Name der Graka, Videospeicher etc
+	// in adapterDesc steht danach Name der GPU, Videospeicher etc
 	result = adapter->GetDesc(&adapterDesc);
-	wcout << "used GPU: " << adapterDesc.Description << endl;
 	if (FAILED(result))
 	{
+		_com_error err(result);
+		wcout << "Error: " << err.ErrorMessage() << endl;
 		return false;
 	}
+	wcout << "used GPU: " << adapterDesc.Description << endl;
 
 	// Store the dedicated video card memory in megabytes.
 	m_videoCardMemory = (int)(adapterDesc.DedicatedVideoMemory / 1024 / 1024);
@@ -279,8 +293,11 @@ bool D3DClass::Initialize(int screenWidth, int screenHeight, bool vsync, HWND hw
 	// D3D_DRIVER_TYPE_UNKNOWN benutzen, wenn man einen spezifischen adapter übergibt!
 	result = D3D11CreateDeviceAndSwapChain(adapter, D3D_DRIVER_TYPE_UNKNOWN, NULL, D3D11_CREATE_DEVICE_DEBUG, &featureLevel, 1,
 		D3D11_SDK_VERSION, &swapChainDesc, &m_swapChain, &m_device, NULL, &m_deviceContext);
+
 	if (FAILED(result))
 	{
+		_com_error err(result);
+		wcout << "Error: " << err.ErrorMessage() << endl;
 		return false;
 	}
 

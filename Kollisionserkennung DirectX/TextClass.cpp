@@ -448,7 +448,7 @@ bool TextClass::SetFps(int fps, ID3D11DeviceContext* deviceContext)
 	if (fps >= 60)
 	{
 		red = 0.0f;
-		green = 0.0f;
+		green = 0.7f;
 		blue = 0.0f;
 	}
 

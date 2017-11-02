@@ -16,6 +16,7 @@
 #include <d3d11.h>
 #include <DirectXMath.h>
 #include <iostream>
+#include <comdef.h>
 
 #include <vector>
 
@@ -32,7 +33,7 @@ public:
 	D3DClass(const D3DClass&);
 	~D3DClass();
 
-	bool Initialize(int, int, bool, HWND, bool, float, float);
+	bool Initialize(int, int, bool, HWND, bool, float, float, int);
 	void Shutdown();
 
 	void BeginScene(float, float, float, float);

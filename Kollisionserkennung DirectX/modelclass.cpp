@@ -309,7 +309,7 @@ void ModelClass::ReleaseTexture()
 // After reading the vertex count it creates the ModelType array and then reads each line into the array.Both the vertex count and index count are now set in this function.
 bool ModelClass::LoadModel(char* filename)
 {
-	cout << "Lade Objekt..." << endl;
+	cout << "Lade Objekt " << filename << endl;
 	ifstream fin;
 	char input;
 	int i;

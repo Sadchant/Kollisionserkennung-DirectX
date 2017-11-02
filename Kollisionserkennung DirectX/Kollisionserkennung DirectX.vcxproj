@@ -28,6 +28,7 @@
     <ClCompile Include="Fontclass.cpp" />
     <ClCompile Include="FontShaderClass.cpp" />
     <ClCompile Include="FpsClass.cpp" />
+    <ClCompile Include="GlobalConfig.cpp" />
     <ClCompile Include="Scene.cpp" />
     <ClCompile Include="inputclass.cpp" />
     <ClCompile Include="LightClass.cpp" />
@@ -49,6 +50,7 @@
     <ClInclude Include="Fontclass.h" />
     <ClInclude Include="FontShaderClass.h" />
     <ClInclude Include="FpsClass.h" />
+    <ClInclude Include="GlobalConfig.h" />
     <ClInclude Include="HlslSharedDefines.h" />
     <ClInclude Include="Scene.h" />
     <ClInclude Include="inputclass.h" />

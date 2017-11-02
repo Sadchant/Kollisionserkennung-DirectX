@@ -26,6 +26,12 @@ Scene::~Scene()
 bool Scene::Initialize(int screenWidth, int screenHeight, HWND hwnd)
 {
 	bool result;
+
+	GlobalConfig globalConfig = GlobalConfig();
+
+	int gpu = globalConfig.Get_GPU();
+	m_Scene = globalConfig.Get_Scene();
+
 	XMMATRIX baseViewMatrix;
 
 	// Create the Direct3D object.
@@ -36,7 +42,7 @@ bool Scene::Initialize(int screenWidth, int screenHeight, HWND hwnd)
 	}
 
 	// Initialize the Direct3D object.
-	result = m_Direct3D->Initialize(screenWidth, screenHeight, VSYNC_ENABLED, hwnd, FULL_SCREEN, SCREEN_DEPTH, SCREEN_NEAR);
+	result = m_Direct3D->Initialize(screenWidth, screenHeight, VSYNC_ENABLED, hwnd, FULL_SCREEN, SCREEN_DEPTH, SCREEN_NEAR, gpu);
 	if (!result)
 	{
 		MessageBox(hwnd, L"Could not initialize Direct3D", L"Error", MB_OK);
@@ -55,11 +61,7 @@ bool Scene::Initialize(int screenWidth, int screenHeight, HWND hwnd)
 	m_Camera->Render();
 	m_Camera->GetViewMatrix(baseViewMatrix);
 
-	// Initialize the model object.
-	if (LARGESCENE)
-		result = LoadBigObjects(m_Direct3D->GetDevice(), hwnd);
-	else
-		result = LoadSmallObjects(m_Direct3D->GetDevice(), hwnd);
+	result = LoadScene(m_Direct3D->GetDevice(), hwnd);
 
 	if (!result)
 	{
@@ -182,8 +184,8 @@ void Scene::Shutdown()
 		m_LightShader = 0;
 	}*/
 
-	// :D
-	if (LARGESCENE) 
+	// kleiner Hack ;)
+	if (m_Scene == 3) 
 	{
 		ModelClass* curModelClass = m_Objects[0];
 		curModelClass->Shutdown();
@@ -345,44 +347,100 @@ bool Scene::Render(float rotation)
 	return true;
 }
 
-bool Scene::LoadSmallObjects(ID3D11Device *device, HWND hwnd)
+bool Scene::LoadScene(ID3D11Device *device, HWND hwnd)
 {
 	bool result;
-	ModelClass *curModel = new ModelClass(); // braucht am Ende nicht deleted zu werden weil m_Objects die Referenz hält
-	result = curModel->Initialize(device, "../Kollisionserkennung DirectX/data/Objekt_1.txt", hwnd);
-	if (!result)
+	
+	switch (m_Scene)
 	{
-		MessageBox(hwnd, L"Could not initialize the first object.", L"Error", MB_OK);
-		return false;
-	}
-	m_Objects.push_back(curModel);
-
-	curModel = new ModelClass();
-	result = curModel->Initialize(device, "../Kollisionserkennung DirectX/data/Objekt_2.txt", hwnd);
-	if (!result)
+	case 0:
 	{
-		MessageBox(hwnd, L"Could not initialize the first object.", L"Error", MB_OK);
-		return false;
-	}
-	m_Objects.push_back(curModel);
-
-	return true;
-}
-
-bool Scene::LoadBigObjects(ID3D11Device *device, HWND hwnd)
-{
-	bool result;
-	ModelClass *curModel = new ModelClass(); // braucht am Ende nicht deleted zu werden weil m_Objects die Referenz hält
-	result = curModel->Initialize(device, "../Kollisionserkennung DirectX/data/Kran.txt", hwnd);
-	if (!result)
-	{
-		MessageBox(hwnd, L"Could not initialize the first object.", L"Error", MB_OK);
-	}
-
-	for (int i = 0; i < 2; i++)
-	{
+		cout << "Lade Szene 0: Simple Testszene" << endl;
+		ModelClass *curModel = new ModelClass(); // braucht am Ende nicht deleted zu werden weil m_Objects die Referenz hält
+		result = curModel->Initialize(device, "../Kollisionserkennung DirectX/data/Objekt_1.txt", hwnd);
+		if (!result)
+		{
+			MessageBox(hwnd, L"Could not initialize the first object.", L"Error", MB_OK);
+			return false;
+		}
 		m_Objects.push_back(curModel);
-	}
 
-	return true;
+		curModel = new ModelClass();
+		result = curModel->Initialize(device, "../Kollisionserkennung DirectX/data/Objekt_2.txt", hwnd);
+		if (!result)
+		{
+			MessageBox(hwnd, L"Could not initialize the first object.", L"Error", MB_OK);
+			return false;
+		}
+		m_Objects.push_back(curModel);
+		return true;
+	}
+	case 1:
+	{
+		cout << "Lade Szene 1: Kran/Box" << endl;
+		ModelClass *curModel = new ModelClass(); // braucht am Ende nicht deleted zu werden weil m_Objects die Referenz hält
+		result = curModel->Initialize(device, "../Kollisionserkennung DirectX/data/Kran_2.txt", hwnd);
+		if (!result)
+		{
+			MessageBox(hwnd, L"Could not initialize the first object.", L"Error", MB_OK);
+			return false;
+		}
+		m_Objects.push_back(curModel);
+
+		curModel = new ModelClass();
+		result = curModel->Initialize(device, "../Kollisionserkennung DirectX/data/Box.txt", hwnd);
+		if (!result)
+		{
+			MessageBox(hwnd, L"Could not initialize the first object.", L"Error", MB_OK);
+			return false;
+		}
+		m_Objects.push_back(curModel);
+		return true;
+	}
+	case 2:
+	{
+		cout << "Lade Szene 2: Kran/Kran" << endl;
+		ModelClass *curModel = new ModelClass(); // braucht am Ende nicht deleted zu werden weil m_Objects die Referenz hält
+		result = curModel->Initialize(device, "../Kollisionserkennung DirectX/data/Kran_1.txt", hwnd);
+		if (!result)
+		{
+			MessageBox(hwnd, L"Could not initialize the first object.", L"Error", MB_OK);
+			return false;
+		}
+		m_Objects.push_back(curModel);
+
+		curModel = new ModelClass();
+		result = curModel->Initialize(device, "../Kollisionserkennung DirectX/data/Kran_2.txt", hwnd);
+		if (!result)
+		{
+			MessageBox(hwnd, L"Could not initialize the first object.", L"Error", MB_OK);
+			return false;
+		}
+		m_Objects.push_back(curModel);
+		return true;
+	}
+	case 3:
+	{
+		cout << "Lade Szene 3: Kran/Kran auf gleicher Position" << endl;
+		bool result;
+		ModelClass *curModel = new ModelClass(); // braucht am Ende nicht deleted zu werden weil m_Objects die Referenz hält
+		result = curModel->Initialize(device, "../Kollisionserkennung DirectX/data/Kran_2.txt", hwnd);
+		if (!result)
+		{
+			MessageBox(hwnd, L"Could not initialize the first object.", L"Error", MB_OK);
+		}
+
+		for (int i = 0; i < 2; i++)
+		{
+			m_Objects.push_back(curModel);
+		}
+
+		return true;
+	}
+	default:
+	{
+		cout << "Error: Ungueltiger Szenen-Parameter: " << m_Scene << endl;
+		return false;
+	}
+	}
 }

@@ -1,0 +1,8 @@
+0
+3
+
+#Parameter 1: genutzte GPU
+#Parameter 2: geladene Szene:	0 - Simple Testszene, 
+				1 - Kran/Box, 
+				2 - Kran/Kran, 
+				3 - Kran/Kran auf gleicher Position
