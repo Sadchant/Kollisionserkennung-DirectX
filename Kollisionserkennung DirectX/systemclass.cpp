@@ -196,7 +196,7 @@ bool SystemClass::Frame()
 	}
 
 	// Do the frame processing for the graphics object.
-	result = m_Scene->Frame(m_Fps->GetFps(), m_Cpu->GetCpuPercentage(), m_Timer->GetTime());
+	result = m_Scene->Frame(m_Fps->GetMS(), m_Fps->GetFPS(), m_Timer->GetTime());
 	if (!result)
 	{
 		return false;

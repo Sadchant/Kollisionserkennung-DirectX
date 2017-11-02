@@ -22,7 +22,9 @@ void FpsClass::Initialize()
 	m_count = 0;
 	m_Counter = 0;
 
+	m_msStartTime = timeGetTime();
 	m_startTime = timeGetTime();
+
 	return;
 }
 
@@ -32,15 +34,15 @@ void FpsClass::Frame()
 {
 	m_count++;
 
-	/*if (timeGetTime() >= (m_startTime + 1000))
+	if (timeGetTime() >= (m_startTime + 1000))
 	{
 		m_fps = m_count;
 		m_count = 0;
 
 		m_startTime = timeGetTime();
-	}*/
+	}
 	unsigned long currentTime = timeGetTime();
-	m_Last10FrameMS[m_Counter++] = currentTime - m_startTime;
+	m_Last10FrameMS[m_Counter++] = currentTime - m_msStartTime;
 	if (m_Counter == AMOUNT) m_Counter = 0;
 
 	int sum = 0;
@@ -48,13 +50,20 @@ void FpsClass::Frame()
 	{
 		sum += m_Last10FrameMS[i];
 	}
-	m_fps = (int)sum/ AMOUNT;
-	m_startTime = currentTime;
+	m_msFrame = (int)sum/ AMOUNT;
+	m_msStartTime = currentTime;
 }
 
 // GetFps returns the frame per second speed for the last second that just passed.This function should be constantly queried so the latest
 // fps can be displayed to the screen.
-int FpsClass::GetFps()
+int FpsClass::GetMS()
+{
+	return m_msFrame;
+}
+
+// GetFps returns the frame per second speed for the last second that just passed.This function should be constantly queried so the latest
+// fps can be displayed to the screen.
+int FpsClass::GetFPS()
 {
 	return m_fps;
 }

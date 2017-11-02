@@ -28,11 +28,12 @@ public:
 
 	void Initialize();
 	void Frame();
-	int GetFps();
+	int GetMS();
+	int GetFPS();
 
 private:
-	int m_fps, m_count;
-	unsigned long m_startTime;
+	int m_fps, m_msFrame, m_count;
+	unsigned long m_msStartTime, m_startTime;
 
 	int m_Counter;
 	unsigned long m_Last10FrameMS[AMOUNT] = {0};

@@ -232,19 +232,19 @@ void Scene::Shutdown()
 }
 
 
-bool Scene::Frame(int fps, int cpu, float frameTime)
+bool Scene::Frame(int ms, int fps, float frameTime)
 {
 	bool result;
 
 	// Set the frames per second.
-	result = m_Text->SetFps(fps, m_Direct3D->GetDeviceContext());
+	result = m_Text->SetMs(ms, m_Direct3D->GetDeviceContext());
 	if (!result)
 	{
 		return false;
 	}
 
 	// Set the cpu usage.
-	result = m_Text->SetCpu(cpu, m_Direct3D->GetDeviceContext());
+	result = m_Text->SetFps(fps, m_Direct3D->GetDeviceContext());
 	if (!result)
 	{
 		return false;
