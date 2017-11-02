@@ -1,6 +1,9 @@
 ///////////////////////////////////////////////////////////////////////////////
 // Filename: fontclass.cpp
 ///////////////////////////////////////////////////////////////////////////////
+
+// ***Quelle***: http://www.rastertek.com/tutdx11.html
+
 #include "fontclass.h"
 // The class constructor initializes all the private member variables for the FontClass to null.
 FontClass::FontClass()

@@ -1,5 +1,8 @@
 #include "inputclass.h"
 
+// ***Quelle***: http://www.rastertek.com/tutdx11.html
+
+
 
 InputClass::InputClass()
 {

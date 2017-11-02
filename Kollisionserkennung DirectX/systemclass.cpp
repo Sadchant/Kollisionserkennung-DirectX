@@ -1,11 +1,13 @@
 #include "systemclass.h"
 
+// ***Quelle***: http://www.rastertek.com/tutdx11.html
+
+
 SystemClass::SystemClass()
 {
 	m_Input = NULL;
 	m_Scene = NULL;
 	m_Fps = 0;
-	m_Cpu = 0;
 	m_Timer = 0;
 }
 
@@ -64,16 +66,6 @@ bool SystemClass::Initialize()
 	// Initialize the fps object.
 	m_Fps->Initialize();
 
-	// Create the cpu object.
-	m_Cpu = new CpuClass;
-	if (!m_Cpu)
-	{
-		return false;
-	}
-
-	// Initialize the cpu object.
-	m_Cpu->Initialize();
-
 	// Create the timer object.
 	m_Timer = new TimerClass;
 	if (!m_Timer)
@@ -101,14 +93,6 @@ void SystemClass::Shutdown()
 	{
 		delete m_Timer;
 		m_Timer = 0;
-	}
-
-	// Release the cpu object.
-	if (m_Cpu)
-	{
-		m_Cpu->Shutdown();
-		delete m_Cpu;
-		m_Cpu = 0;
 	}
 
 	// Release the fps object.
@@ -187,7 +171,6 @@ bool SystemClass::Frame()
 	// Update the system stats.
 	m_Timer->Frame();
 	m_Fps->Frame();
-	m_Cpu->Frame();
 
 	// Check if the user pressed escape and wants to exit the application.
 	if (m_Input->IsKeyDown(VK_ESCAPE))

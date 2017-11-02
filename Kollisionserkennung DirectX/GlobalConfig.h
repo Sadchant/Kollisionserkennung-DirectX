@@ -6,7 +6,7 @@
 using namespace std;
 
 
-
+// Dient zum Einlesen der Konfigurationsdatei, die Daten können mit Get_GPU() und Get_Scene() ausgelesen werden
 class GlobalConfig
 {
 public:

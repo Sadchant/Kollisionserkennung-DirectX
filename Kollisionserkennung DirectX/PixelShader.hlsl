@@ -3,6 +3,9 @@
 // a float4 as output which represents the final pixel color. This pixel shader program is very simple as we just tell it to color the pixel the same as
 // the input value of the color. Note that the pixel shader gets its input from the vertex shader output.
 
+// ***Quelle***: http://www.rastertek.com/tutdx11.html
+
+
 
 
 //////////////

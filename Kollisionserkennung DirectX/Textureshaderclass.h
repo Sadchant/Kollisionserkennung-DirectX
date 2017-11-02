@@ -1,5 +1,8 @@
 #pragma once
 
+// ***Quelle***: http://www.rastertek.com/tutdx11.html
+
+
 #include <d3d11.h>
 #include <d3dcompiler.h>
 #include <directxmath.h>

@@ -1,5 +1,8 @@
 #include "cameraclass.h"
 
+// ***Quelle***: http://www.rastertek.com/tutdx11.html
+
+
 // The class constructor will initialize the position and rotation of the camera to be at the origin of the scene.
 CameraClass::CameraClass()
 {

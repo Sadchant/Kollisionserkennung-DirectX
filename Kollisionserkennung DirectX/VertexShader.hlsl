@@ -4,6 +4,9 @@
 // efficient execution of shaders as well as how the graphics card will store the buffers. In this example I've put three matrices in the
 // same buffer since I will update them each frame at the same time.
 
+// ***Quelle***: http://www.rastertek.com/tutdx11.html
+
+
 /////////////
 // GLOBALS //
 /////////////

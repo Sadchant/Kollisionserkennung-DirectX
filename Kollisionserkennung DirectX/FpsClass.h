@@ -1,6 +1,9 @@
 // The FpsClass is simply a counter with a timer associated with it.It counts how many frames occur in a one second period and constantly
 // updates that count.
 #pragma once
+
+// ***Quelle***: http://www.rastertek.com/tutdx11.html
+
 /////////////
 // LINKING //
 /////////////

@@ -1,6 +1,9 @@
 #ifndef _SYSTEMCLASS_H_
 #define _SYSTEMCLASS_H_
 
+// ***Quelle***: http://www.rastertek.com/tutdx11.html
+
+
 #define WIN32_LEAN_AND_MEAN
 
 #include <windows.h>
@@ -8,7 +11,6 @@
 #include "Scene.h"
 
 #include "FpsClass.h"
-#include "CpuClass.h"
 #include "TimerClass.h"
 
 
@@ -41,7 +43,6 @@ private:
 	Scene* m_Scene;
 
 	FpsClass* m_Fps;
-	CpuClass* m_Cpu;
 	TimerClass* m_Timer;
 };
 

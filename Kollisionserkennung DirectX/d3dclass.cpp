@@ -1,5 +1,8 @@
 #include "d3dclass.h"
 
+// ***Quelle***: http://www.rastertek.com/tutdx11.html
+
+
 D3DClass::D3DClass()
 {
 	m_swapChain = NULL;

@@ -1,5 +1,8 @@
 #include "systemclass.h"
 
+// ***Quelle***: http://www.rastertek.com/tutdx11.html
+
+
 
 /*int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR pScmdline, int iCmdshow)
 {

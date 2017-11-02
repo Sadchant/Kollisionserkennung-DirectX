@@ -23,7 +23,6 @@
     <ClCompile Include="cameraclass.cpp" />
     <ClCompile Include="CollisionDetectionManager.cpp" />
     <ClCompile Include="Colorshaderclass.cpp" />
-    <ClCompile Include="CpuClass.cpp" />
     <ClCompile Include="d3dclass.cpp" />
     <ClCompile Include="Fontclass.cpp" />
     <ClCompile Include="FontShaderClass.cpp" />
@@ -45,7 +44,6 @@
     <ClInclude Include="cameraclass.h" />
     <ClInclude Include="CollisionDetectionManager.h" />
     <ClInclude Include="Colorshaderclass.h" />
-    <ClInclude Include="CpuClass.h" />
     <ClInclude Include="d3dclass.h" />
     <ClInclude Include="Fontclass.h" />
     <ClInclude Include="FontShaderClass.h" />
@@ -57,7 +55,6 @@
     <ClInclude Include="LightClass.h" />
     <ClInclude Include="Lightshaderclass.h" />
     <ClInclude Include="modelclass.h" />
-    <ClInclude Include="resource.h" />
     <ClInclude Include="systemclass.h" />
     <ClInclude Include="TextClass.h" />
     <ClInclude Include="Textureclass.h" />

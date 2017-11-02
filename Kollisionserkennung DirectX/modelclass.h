@@ -1,5 +1,8 @@
 #pragma once
 
+// ***Quelle***: http://www.rastertek.com/tutdx11.html
+
+
 // As stated previously the ModelClass is responsible for encapsulating the geometry for 3D models.
 // In this tutorial we will manually setup the data for a single green triangle. We will also create
 // a vertex and index buffer for the triangle so that it can be rendered.

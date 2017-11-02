@@ -1,6 +1,9 @@
 #ifndef _INPUTCLASS_H_
 #define _INPUTCLASS_H_
 
+// ***Quelle***: http://www.rastertek.com/tutdx11.html
+
+
 
 class InputClass
 {

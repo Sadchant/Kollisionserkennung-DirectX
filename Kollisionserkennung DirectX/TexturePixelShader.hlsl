@@ -1,3 +1,5 @@
+// ***Quelle***: http://www.rastertek.com/tutdx11.html
+
 // The texture pixel shader has two global variables. The first is Texture2D shaderTexture which is the texture resource. This will be our texture
 // resource that will be used for rendering the texture on the model. The second new variable is the SamplerState SampleType. The sampler state allows
 // us to modify how the pixels are written to the polygon face when shaded. For example if the polygon is really far away and only makes up 8 pixels on

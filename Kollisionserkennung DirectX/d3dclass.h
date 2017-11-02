@@ -1,6 +1,9 @@
 #ifndef _D3DCLASS_H_
 #define _D3DCLASS_H_
 
+// ***Quelle***: http://www.rastertek.com/tutdx11.html
+
+
 // Bibliotheken werden gelinkt
 // beinhalten Funktionalit‰t, um Direct3D zu initialisieren und 3D-Grafik zu zeichnen
 // auﬂerdem Tools um Bildwiederholrate und Grafikkarteninfos auszulesen

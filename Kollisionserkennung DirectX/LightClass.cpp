@@ -3,6 +3,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 #include "lightclass.h"
 
+// ***Quelle***: http://www.rastertek.com/tutdx11.html
+
+
 
 LightClass::LightClass()
 {

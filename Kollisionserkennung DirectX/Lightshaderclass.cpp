@@ -3,6 +3,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 #include "lightshaderclass.h"
 
+// ***Quelle***: http://www.rastertek.com/tutdx11.html
+
+
 
 LightShaderClass::LightShaderClass()
 {

@@ -1,5 +1,8 @@
 #include "textureshaderclass.h"
 
+// ***Quelle***: http://www.rastertek.com/tutdx11.html
+
+
 
 TextureShaderClass::TextureShaderClass()
 {

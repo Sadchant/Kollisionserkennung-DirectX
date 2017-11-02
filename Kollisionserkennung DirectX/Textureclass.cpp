@@ -1,5 +1,8 @@
 #include "textureclass.h"
 
+// ***Quelle***: http://www.rastertek.com/tutdx11.html
+
+
 // Initialize the three pointers to null in the class constructor.
 
 TextureClass::TextureClass()

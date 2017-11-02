@@ -1,5 +1,8 @@
 #include "colorshaderclass.h"
 
+// ***Quelle***: http://www.rastertek.com/tutdx11.html
+
+
 ColorShaderClass::ColorShaderClass()
 {
 	m_vertexShader = 0;

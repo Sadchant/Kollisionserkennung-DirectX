@@ -1,6 +1,9 @@
 #ifndef _Scene_H_
 #define _Scene_H_
 
+// ***Quelle***: http://www.rastertek.com/tutdx11.html
+
+
 #include <vector>
 #include "d3dclass.h"
 #include "cameraclass.h"
@@ -12,6 +15,7 @@
 #include "lightclass.h"
 #include "CollisionDetectionManager.h"
 #include "TextClass.h"
+#include "GlobalConfig.h"
 
 using namespace std;
 

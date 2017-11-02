@@ -1,3 +1,5 @@
+// ***Quelle***: http://www.rastertek.com/tutdx11.html
+
 // The texture vertex shader is similar to the previous color shader except that there have been some changes to accommodate texturing.
 
 

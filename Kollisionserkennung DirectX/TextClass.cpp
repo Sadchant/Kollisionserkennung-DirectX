@@ -2,6 +2,9 @@
 // Filename: textclass.cpp
 ///////////////////////////////////////////////////////////////////////////////
 #include "textclass.h"
+
+// ***Quelle***: http://www.rastertek.com/tutdx11.html
+
 // The class constructor initializes the private member variables to null.
 TextClass::TextClass()
 {

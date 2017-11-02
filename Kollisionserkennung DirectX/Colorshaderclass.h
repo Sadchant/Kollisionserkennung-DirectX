@@ -1,6 +1,9 @@
 #ifndef _COLORSHADERCLASS_H_
 #define _COLORSHADERCLASS_H_
 
+// ***Quelle***: http://www.rastertek.com/tutdx11.html
+
+
 // The ColorShaderClass is what we will use to invoke our HLSL shaders for drawing the 3D models that are on the GPU.
 
 #pragma comment(lib, "D3DCompiler.lib")

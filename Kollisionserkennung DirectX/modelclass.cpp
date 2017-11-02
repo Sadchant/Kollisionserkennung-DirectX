@@ -1,5 +1,8 @@
 #include "modelclass.h"
 
+// ***Quelle***: http://www.rastertek.com/tutdx11.html
+
+
 
 ModelClass::ModelClass()
 {
