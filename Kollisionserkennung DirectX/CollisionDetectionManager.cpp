@@ -428,7 +428,7 @@ ID3D11ComputeShader* CollisionDetectionManager::CreateComputeShader(WCHAR* csFil
 	// string then it means it could not find the shader file in which case we pop up a dialog box saying so.
 
 	// Compile the compute shader code, D3D_COMPILE_STANDARD_FILE_INCLUDE bewirkt, dass man "#include" in hlsl benutzen kann
-	result = D3DCompileFromFile(csFilename, NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", "cs_5_0", D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION /*| D3DCOMPILE_WARNINGS_ARE_ERRORS*/,
+	result = D3DCompileFromFile(csFilename, NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", "cs_5_0", D3DCOMPILE_OPTIMIZATION_LEVEL3/*D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION | D3DCOMPILE_WARNINGS_ARE_ERRORS*/,
 		0, &computeShaderBuffer, &errorMessage);
 	if (FAILED(result))
 	{
@@ -1043,7 +1043,7 @@ void CollisionDetectionManager::Frame()
 	_10_TriangleIntersections_GetFinalResult();
 
 	_11_ZeroIntersectionCenters();
-
+	
 	m_CopyTo1 = !m_CopyTo1;
 }
 

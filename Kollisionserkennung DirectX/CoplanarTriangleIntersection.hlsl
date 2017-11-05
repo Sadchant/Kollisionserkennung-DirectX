@@ -52,6 +52,8 @@ bool IntersectCoplanar(float3 triangle1[3], float3 triangle2[3])
         _3D0Triangle2[i] = float3(_2DTriangle2[i].x, _2DTriangle2[i].y, 0);
     }
 
+    // prüfe, ob ein Punkt eines Dreiecks zusammen mit einem Punkt eines anderen Dreiecks auf der selben Seite der Geraden liegen, die durch die zwei anderen Punkte 
+    // des ersten Dreiecks gebildet wird und wiederhole dies für alle drei Punkte von Dreiecks 2 und wiederhole dies für alle möglichen Kombinationen
     for (int j = 0; j < 3; j++)
     {
         float3 t1p1 = _3D0Triangle1[j], t1p2 = _3D0Triangle1[(j + 1) % 3], thirdPoint = _3D0Triangle1[(j + 2) % 3];

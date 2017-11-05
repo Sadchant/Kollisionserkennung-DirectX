@@ -13,6 +13,12 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Compute Shader">
+      <UniqueIdentifier>{9b3d7540-656f-424e-9ca2-18014ecf74a3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Vertex-/Pixelshader">
+      <UniqueIdentifier>{d3240783-f368-43f3-8012-98294243ea6f}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="cameraclass.cpp">
@@ -137,30 +143,78 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
-    <None Include="PixelShader.hlsl" />
-    <None Include="TexturePixelShader.hlsl" />
-    <None Include="TextureVertexShader.hlsl" />
-    <None Include="VertexShader.hlsl" />
-    <None Include="LightPixelShader.hlsl" />
-    <None Include="LightVertexShader.hlsl" />
-    <None Include="FontVertexShader.hlsl" />
-    <None Include="FontPixelShader.hlsl" />
-    <None Include="1_BoundingBoxes_CS.hlsl" />
-    <None Include="0_ComputeShaderGlobals.hlsl" />
-    <None Include="2_SceneBoundingBox_CS.hlsl" />
-    <None Include="3_FillCounterTrees_CS.hlsl" />
-    <None Include="4_GlobalCounterTree_CS.hlsl" />
-    <None Include="5_FillTypeTree_CS.hlsl" />
-    <None Include="7_CellTrianglePairs_CS.hlsl" />
-    <None Include="6_FillLeafIndexTree_CS.hlsl" />
-    <None Include="8_1_RadixSort_ExclusivePrefixSum_CS.hlsl" />
-    <None Include="8_2_RadixSort_ExclusivePrefixSum_CS.hlsl" />
-    <None Include="8_3_RadixSort_Sort_CS.hlsl" />
-    <None Include="9_FindTrianglePairs_CS.hlsl" />
-    <None Include="10_TriangleIntersections_CS.hlsl" />
-    <None Include="CoplanarTriangleIntersection.hlsl" />
-    <None Include="11_ZeroIntersectionCenters_CS.hlsl" />
-    <None Include="TriangleIntersections.hlsl" />
+    <None Include="0_ComputeShaderGlobals.hlsl">
+      <Filter>Compute Shader</Filter>
+    </None>
+    <None Include="1_BoundingBoxes_CS.hlsl">
+      <Filter>Compute Shader</Filter>
+    </None>
+    <None Include="2_SceneBoundingBox_CS.hlsl">
+      <Filter>Compute Shader</Filter>
+    </None>
+    <None Include="3_FillCounterTrees_CS.hlsl">
+      <Filter>Compute Shader</Filter>
+    </None>
+    <None Include="4_GlobalCounterTree_CS.hlsl">
+      <Filter>Compute Shader</Filter>
+    </None>
+    <None Include="5_FillTypeTree_CS.hlsl">
+      <Filter>Compute Shader</Filter>
+    </None>
+    <None Include="6_FillLeafIndexTree_CS.hlsl">
+      <Filter>Compute Shader</Filter>
+    </None>
+    <None Include="7_CellTrianglePairs_CS.hlsl">
+      <Filter>Compute Shader</Filter>
+    </None>
+    <None Include="8_1_RadixSort_ExclusivePrefixSum_CS.hlsl">
+      <Filter>Compute Shader</Filter>
+    </None>
+    <None Include="8_2_RadixSort_ExclusivePrefixSum_CS.hlsl">
+      <Filter>Compute Shader</Filter>
+    </None>
+    <None Include="8_3_RadixSort_Sort_CS.hlsl">
+      <Filter>Compute Shader</Filter>
+    </None>
+    <None Include="9_FindTrianglePairs_CS.hlsl">
+      <Filter>Compute Shader</Filter>
+    </None>
+    <None Include="10_TriangleIntersections_CS.hlsl">
+      <Filter>Compute Shader</Filter>
+    </None>
+    <None Include="11_ZeroIntersectionCenters_CS.hlsl">
+      <Filter>Compute Shader</Filter>
+    </None>
+    <None Include="CoplanarTriangleIntersection.hlsl">
+      <Filter>Compute Shader</Filter>
+    </None>
+    <None Include="TriangleIntersections.hlsl">
+      <Filter>Compute Shader</Filter>
+    </None>
+    <None Include="VertexShader.hlsl">
+      <Filter>Vertex-/Pixelshader</Filter>
+    </None>
+    <None Include="TextureVertexShader.hlsl">
+      <Filter>Vertex-/Pixelshader</Filter>
+    </None>
+    <None Include="TexturePixelShader.hlsl">
+      <Filter>Vertex-/Pixelshader</Filter>
+    </None>
+    <None Include="LightVertexShader.hlsl">
+      <Filter>Vertex-/Pixelshader</Filter>
+    </None>
+    <None Include="LightPixelShader.hlsl">
+      <Filter>Vertex-/Pixelshader</Filter>
+    </None>
+    <None Include="FontVertexShader.hlsl">
+      <Filter>Vertex-/Pixelshader</Filter>
+    </None>
+    <None Include="FontPixelShader.hlsl">
+      <Filter>Vertex-/Pixelshader</Filter>
+    </None>
+    <None Include="PixelShader.hlsl">
+      <Filter>Vertex-/Pixelshader</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Kollisionserkennung DirectX.rc">
